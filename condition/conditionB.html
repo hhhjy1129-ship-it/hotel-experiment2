@@ -55,6 +55,7 @@
       background: #e9ffe9;
       border: 1px solid #b2d8b2;
       border-radius: 6px;
+      white-space: pre-wrap;
     }
   </style>
 </head>
@@ -78,7 +79,9 @@
   <div id="result" class="result" style="display:none;"></div>
 
   <script>
-    document.getElementById("myForm").addEventListener("submit", function(e) {
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbyP6Bg4NDiiAsdPJKHd4_iJUBSHfjhin6tAJU2O9S1sHRbwRfW9i0i6_bWJnm-WKNZQ/exec";
+
+    document.getElementById("myForm").addEventListener("submit", async function(e) {
       e.preventDefault();
 
       const subj = document.getElementById("subj").value;
@@ -87,29 +90,31 @@
       const ua = navigator.userAgent;
       const seed = Math.floor(Math.random() * 1000000);
 
-      // 这里 condition 固定为 B
-      const params = {
+      const payload = {
         subj: subj,
-        condition: "B",
+        condition: "B",   // ✅ 固定 B
         hotel: hotel,
-        isFuture: true,
+        isFuture: true,   // ✅ 固定 true
         code: code,
         seed: seed,
-        ua: ua
+        ts: Date.now(),
+        __ua: ua          // ✅ 注意这里是 __ua
       };
 
-      const query = new URLSearchParams(params).toString();
-
-      fetch("https://script.google.com/macros/s/AKfycbx6gd_sXmyH0pwn15uu9-x_16eLSt83tUeSqradHue6DIiLPVEdoRgzoeSD8fgH1k83/exec?" + query)
-        .then(res => res.json())
-        .then(data => {
-          const resultDiv = document.getElementById("result");
-          resultDiv.style.display = "block";
-          resultDiv.innerHTML = "<strong>返回结果：</strong><br>" + JSON.stringify(data, null, 2);
-        })
-        .catch(err => {
-          alert("提交失败: " + err);
+      try {
+        const res = await fetch(GAS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain" },
+          body: JSON.stringify(payload)
         });
+        const text = await res.text();
+
+        const resultDiv = document.getElementById("result");
+        resultDiv.style.display = "block";
+        resultDiv.textContent = "返回结果:\n" + text;
+      } catch (err) {
+        alert("提交失败: " + err);
+      }
     });
   </script>
 
