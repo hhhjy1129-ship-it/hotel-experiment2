@@ -2,23 +2,32 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="robots" content="noindex,nofollow" />
   <title>实验页 A · 两卡均为“过去30天内超低价”</title>
   <style>
     :root{--card-gap:16px}
+    *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#f8fafc;color:#1e293b}
-    .banner{position:sticky;top:0;background:#ef4444;color:white;text-align:center;padding:8px;font-weight:800;z-index:10}
+    .banner{position:sticky;top:0;background:#ef4444;color:white;text-align:center;padding:8px;font-weight:800;z-index:60}
+    .filters{
+      position:sticky; top:36px; /* 在红色banner下方吸顶 */
+      padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+      background:linear-gradient(#ffffff, #ffffffee);
+      border-bottom:1px solid #eef2f7; backdrop-filter:saturate(180%) blur(8px);
+      display:flex; gap:8px; overflow:auto; white-space:nowrap; z-index:50;
+    }
+    .chip{padding:8px 12px;border-radius:999px;border:1px solid #dbe3ee;background:#fff;font-weight:700;font-size:14px}
+    .chip.active{border-color:#0ea5e9;box-shadow:0 0 0 2px rgba(14,165,233,.15) inset}
     .wrap{max-width:1100px;margin:20px auto;padding:0 16px}
 
     .hotel{display:grid;grid-template-columns:320px 1fr 170px;gap:var(--card-gap);border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:12px}
     .hotel + .hotel{margin-top:14px}
     .imgwrap{position:relative;border-radius:12px;overflow:hidden}
     .img{width:100%;height:200px;object-fit:cover;display:block;background:#e5e7eb}
-    .fav{position:absolute;right:10px;top:10px;width:38px;height:38px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;display:grid;place-items:center;box-shadow:0 4px 10px rgba(0,0,0,.1)}
-    .fav::before{content:'\\2661';color:#64748b;font-size:20px}
-
-    .inline-badge{display:inline-block;background:#16a34a;color:#fff;font-weight:900;border-radius:10px;padding:8px 12px;font-size:15px;box-shadow:0 4px 10px rgba(0,0,0,.15);margin-top:8px}
+    .fav{position:absolute;right:10px;top:10px;width:38px;height:38px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;display:grid;place-items:center;box-shadow:0 4px 10px rgba(0,0,0,.1);cursor:pointer}
+    .fav::before{content:"\2661";color:#64748b;font-size:20px;line-height:1}
+    .fav.active::before{content:"\2665";color:#ef4444}
 
     .title{font-size:22px;font-weight:900;margin:0 0 6px}
     .score{display:flex;align-items:center;gap:8px;color:#065f46}
@@ -29,7 +38,14 @@
     .bullets li{margin:4px 0}
 
     .right{display:grid;align-content:center;justify-items:end;gap:8px}
-    .price{font-size:24px;font-weight:900;color:#073b1a}
+    .price-row{display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+    .price .currency{font-weight:800;font-size:1.1rem;line-height:1}
+    .price .amount{font-weight:900;font-size:1.8rem;line-height:1}
+    .price-badge{
+      padding:.35rem .6rem;border-radius:999px;
+      font-size:.85rem;font-weight:800;line-height:1;
+      background:#16a34a;color:#fff;box-shadow:0 2px 6px rgba(22,163,74,.25);white-space:nowrap
+    }
     .refund{font-size:13px;color:#065f46;line-height:1.2;text-align:right}
     .cta{background:#22c55e;color:#052e16;border:0;border-radius:999px;padding:12px 16px;font-weight:900;cursor:pointer}
     .cta[disabled]{opacity:.6;cursor:not-allowed}
@@ -39,20 +55,29 @@
       .hotel{grid-template-columns:1fr;gap:12px}
       .img{height:200px}
       .right{justify-items:start}
-      .price{text-align:left}
       .refund{text-align:left}
+      .price .amount{font-size:1.6rem}
+      .price-badge{font-size:.75rem;padding:.28rem .5rem}
     }
   </style>
 </head>
 <body>
   <div class="banner">DEMO / 实验页面 A —— 仅用于实验，不提供真实预订服务</div>
+  <div class="filters">
+    <button class="chip active">价格</button>
+    <button class="chip">评分 4.5+</button>
+    <button class="chip">可退</button>
+    <button class="chip">含早</button>
+    <button class="chip">地铁附近</button>
+    <button class="chip">有优惠</button>
+  </div>
   <div class="wrap">
     <div id="list"></div>
   </div>
 
   <script>
-    // ======= 配置：把这里换成你的 Apps Script Web App URL（以 /exec 结尾）=======
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx8RI57cQuMxO22BvebSMnMZ0lrektF-xciI4KGolksuV_mnbR2LIZ_RZr418rIFs7l/exec";
+    // ======= Google Apps Script 日志上报 URL（已替换为你给的新地址）=======
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbwcmJJrXCdlUroUaXJvNRdQvjxi9hMwdAPQe6Kqkm5z3TqCVpNHLgoLjuFNK4Sedcbu/exec";
 
     const CONDITION = 'A'; // Past/Past
     const SAME_PRICE = 'US$301';
@@ -101,31 +126,45 @@
       fetch(GAS_URL, {
         method: "POST",
         headers: { "Content-Type": "text/plain" }, // Apps Script 端 JSON.parse(e.postData.contents)
-        body: JSON.stringify({ subj, condition, hotel, isFuture, code })
+        body: JSON.stringify({ subj, condition, hotel, isFuture, code, ts: Date.now() })
       }).catch(()=>{});
     }
 
     function makeCard(hotel){
       const el = document.createElement('div');
       el.className = 'hotel';
+      const priceCurrency = (SAME_PRICE.match(/^[A-Z]*\$/)?.[0] || 'US$');
+      const priceAmount = (SAME_PRICE.match(/\d+/)?.[0] || '301');
+
       el.innerHTML = `
         <div class="imgwrap">
           <img class="img" src="${hotel.img}" alt="${hotel.name}">
-          <div class="fav" title="收藏（占位）"></div>
+          <div class="fav" title="收藏"></div>
         </div>
         <div class="mid">
           <h3 class="title">${hotel.name}</h3>
           <div class="score"><span>${RATING}</span><span class="dots">●●●●●◐</span><span class="meta">（${REVIEW_COUNT.toLocaleString()} 条点评）</span></div>
           <span class="ranking">在洛杉矶的 1,051 处住宿中排行榜前十</span>
           <ul class="bullets"><li>关键词：${hotel.tags.join(' ・ ')}</li></ul>
-          <div class="inline-badge">过去30天内超低价</div>
         </div>
         <div class="right">
-          <div class="price">${SAME_PRICE}</div>
+          <div class="price-row">
+            <div class="price"><span class="currency">${priceCurrency}</span><span class="amount">${priceAmount}</span></div>
+            <span class="price-badge">过去30天内超低价</span>
+          </div>
           <div class="refund">可全额退款<br>无需预付款</div>
           <a class="meta" href="javascript:void(0)">查看优惠</a>
-          <button class="cta">查看酒店</button>
+          <button class="cta">点击购买</button>
         </div>`;
+
+      // 收藏按钮切换
+      const fav = el.querySelector('.fav');
+      fav.setAttribute('role','button');
+      fav.setAttribute('aria-pressed','false');
+      fav.addEventListener('click', ()=>{
+        const on = fav.classList.toggle('active');
+        fav.setAttribute('aria-pressed', on ? 'true' : 'false');
+      });
 
       el.querySelector('.cta').addEventListener('click', ()=>{
         if(isLocked()){ alert('您已提交过选择，请返回问卷继续填写。'); return; }
@@ -134,13 +173,13 @@
         const code = genCode(`${subj}|${CONDITION}|${hotelName}|${isFuture}`);
 
         setLock({ subj, condition:CONDITION, hotelName, isFuture, code, ts:new Date().toISOString() });
-        el.querySelector('.inline-badge').textContent = `已记录您的选择，请填写其他问卷内容。验证码：${code}（已复制）`;
-        el.querySelector('.inline-badge').style.background = '#0ea5e9';
-        el.querySelector('.inline-badge').style.fontSize = '15px';
+        const badge = el.querySelector('.price-badge');
+        badge.textContent = `已记录您的选择，请填写其他问卷内容。验证码：${code}（已复制）`;
+        badge.style.background = '#0ea5e9';
+        badge.style.fontSize = '15px';
         document.querySelectorAll('.cta').forEach(btn=> btn.disabled = true);
 
         copy(code);
-        // 上报日志
         logClick({subj, condition:CONDITION, hotel:hotelName, isFuture, code});
       });
 
@@ -156,7 +195,7 @@
       const lock = isLocked();
       if(lock){
         document.querySelectorAll('.cta').forEach(btn=> btn.disabled = true);
-        document.querySelectorAll('.inline-badge').forEach(b=>{
+        document.querySelectorAll('.price-badge').forEach(b=>{
           b.textContent = `已记录您的选择：${lock.hotelName}（过去）。验证码：${lock.code}`;
           b.style.background='#0ea5e9'; b.style.fontSize='15px';
         });
