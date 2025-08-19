@@ -49,12 +49,12 @@
   <div class="wrap"><div id="list"></div></div>
 
 <script>
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbx6gd_sXmyH0pwn15uu9-x_16eLSt83tUeSqradHue6DIiLPVEdoRgzoeSD8fgH1k83/exec";
-  const CONDITION = 'A';
+  // ✅ 使用你的新 GAS 地址
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbyP6Bg4NDiiAsdPJKHd4_iJUBSHfjhin6tAJU2O9S1sHRbwRfW9i0i6_bWJnm-WKNZQ/exec";
+  const CONDITION = 'A';   // ✅ 当前是 A 条件
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
   const RATING = '4.5';
-  const UNIQUE_CODE = true;
 
   const HOTEL_A = { id:'A', name:'Palm Tree Inn', img:'hotel1.jpg', tags:['精品','古雅','浪漫'] };
   const HOTEL_B = { id:'B', name:'Rotex Western Inn', img:'hotel2.jpg', tags:['安静','舒适','便捷'] };
@@ -97,7 +97,7 @@
       el.querySelector('.price-badge').textContent=`已记录，验证码：${code}`;
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
       copy(code);
-      logClick({subj,condition:CONDITION,hotel:hotelName,isFuture,code,seed,ts:Date.now()});
+      logClick({subj,condition:CONDITION,hotel:hotelName,isFuture,code,seed,ts:Date.now(),__ua:navigator.userAgent});
     });
     return el;
   }
