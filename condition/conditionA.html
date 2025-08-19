@@ -73,12 +73,14 @@
   <div class="wrap"><div id="list"></div></div>
 
 <script>
+  // ===== 配置 =====
   const GAS_URL = "https://script.google.com/macros/s/AKfycbwcmJJrXCdlUroUaXJvNRdQvjxi9hMwdAPQe6Kqkm5z3TqCVpNHLgoLjuFNK4Sedcbu/exec";
-
   const CONDITION = 'A';
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
   const RATING = '4.5';
+  // 设为 true：每次点击生成不同验证码；设为 false：同条件下生成同一验证码
+  const UNIQUE_CODE = true;
 
   const HOTEL_A = { id:'A', name:'Palm Tree Inn', img:'hotel1.jpg', tags:['精品','古雅','浪漫'] };
   const HOTEL_B = { id:'B', name:'Rotex Western Inn', img:'hotel2.jpg', tags:['安静','舒适','便捷'] };
@@ -97,12 +99,33 @@
   function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
   function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-  function genCode(seedStr){ let h = 2166136261; for (let i=0;i<seedStr.length;i++){ h^=seedStr.charCodeAt(i); h=(h>>>0)*16777619; } const n=(h>>>0)%1000000; return 'H'+String(n).padStart(6,'0'); }
+  // FNV-like 简易散列 → 6 位码
+  function genCode(seedStr){
+    let h = 2166136261;
+    for (let i=0;i<seedStr.length;i++){ h ^= seedStr.charCodeAt(i); h = (h>>>0)*16777619; }
+    const n = (h>>>0) % 1000000;
+    return 'H' + String(n).padStart(6,'0');
+  }
+
   async function copy(text){ try{ await navigator.clipboard.writeText(text); }catch(e){} }
 
-  function logClick({subj, condition, hotel, isFuture, code}){
+  // ---- 稳定上报（移动端友好）----
+  function logClick(payload){
     if(!GAS_URL) return;
-    fetch(GAS_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({subj,condition,hotel,isFuture,code,ts:Date.now()})}).catch(()=>{});
+    try{
+      // 用 text/plain，兼容你 Apps Script 的 JSON.parse(e.postData.contents)
+      const blob = new Blob([JSON.stringify(payload)], { type: "text/plain" });
+      if (navigator.sendBeacon && navigator.sendBeacon(GAS_URL, blob)) {
+        return;
+      }
+    }catch(e){}
+    // 兜底：keepalive 避免页面关闭时中断
+    fetch(GAS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify(payload),
+      keepalive: true
+    }).catch(()=>{});
   }
 
   function makeCard(hotel){
@@ -134,23 +157,36 @@
         <a class="meta" href="javascript:void(0)">查看优惠</a>
       </div>`;
 
+    // 收藏按钮
     const fav=el.querySelector('.fav');
     fav.setAttribute('role','button'); fav.setAttribute('aria-pressed','false');
     fav.addEventListener('click',()=>{ const on=fav.classList.toggle('active'); fav.setAttribute('aria-pressed',on?'true':'false'); });
 
+    // CTA
     el.querySelector('.cta').addEventListener('click',()=>{
       if(isLocked()){ alert('您已提交过选择，请返回问卷继续填写。'); return; }
       const hotelName=el.querySelector('.title').textContent;
       const isFuture=false;
-      const code=genCode(`${subj}|${CONDITION}|${hotelName}|${isFuture}`);
+
+      // 唯一/固定验证码控制
+      const codeSeedBase = `${subj}|${CONDITION}|${hotelName}|${isFuture}`;
+      const codeSeed = UNIQUE_CODE ? `${codeSeedBase}|${Date.now()}` : codeSeedBase;
+      const code=genCode(codeSeed);
+
+      // 本地锁定，避免重复提交
       setLock({subj,condition:CONDITION,hotelName,isFuture,code,ts:new Date().toISOString()});
 
+      // UI 提示
       const badge=el.querySelector('.price-badge');
       badge.textContent=`已记录您的选择，请填写其他问卷内容。验证码：${code}（已复制）`;
       badge.style.background='#0ea5e9'; badge.style.fontSize='15px';
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
 
-      copy(code); logClick({subj,condition:CONDITION,hotel:hotelName,isFuture,code});
+      // 复制验证码
+      copy(code);
+
+      // 上报（sendBeacon 优先）
+      logClick({subj,condition:CONDITION,hotel:hotelName,isFuture,code,seed,ts:Date.now()});
     });
 
     return el;
