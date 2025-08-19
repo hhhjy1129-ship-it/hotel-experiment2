@@ -6,22 +6,17 @@
   <meta name="robots" content="noindex,nofollow" />
   <title>实验页 A · 两卡均为“过去30天内超低价”</title>
   <style>
+    :root{--card-gap:16px}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#f8fafc;color:#1e293b}
-    .banner{position:sticky;top:0;background:#ef4444;color:white;text-align:center;padding:8px;font-weight:800}
+    .banner{position:sticky;top:0;background:#ef4444;color:white;text-align:center;padding:8px;font-weight:800;z-index:10}
     .wrap{max-width:1100px;margin:20px auto;padding:0 16px}
 
-    /* 桌面：稍微弹性，避免中等宽度断裂 */
-    .hotel{
-      display:grid;
-      grid-template-columns:minmax(260px,320px) 1fr minmax(150px,190px);
-      gap:16px;border:1px solid #e2e8f0;border-radius:16px;background:#fff;
-      box-shadow:0 6px 18px rgba(0,0,0,.06);padding:12px
-    }
+    .hotel{display:grid;grid-template-columns:320px 1fr 170px;gap:var(--card-gap);border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:12px}
     .hotel + .hotel{margin-top:14px}
     .imgwrap{position:relative;border-radius:12px;overflow:hidden}
     .img{width:100%;height:200px;object-fit:cover;display:block;background:#e5e7eb}
     .fav{position:absolute;right:10px;top:10px;width:38px;height:38px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;display:grid;place-items:center;box-shadow:0 4px 10px rgba(0,0,0,.1)}
-    .fav::before{content:'\2661';color:#64748b;font-size:20px}
+    .fav::before{content:'\\2661';color:#64748b;font-size:20px}
 
     .inline-badge{display:inline-block;background:#16a34a;color:#fff;font-weight:900;border-radius:10px;padding:8px 12px;font-size:15px;box-shadow:0 4px 10px rgba(0,0,0,.15);margin-top:8px}
 
@@ -39,28 +34,13 @@
     .cta{background:#22c55e;color:#052e16;border:0;border-radius:999px;padding:12px 16px;font-weight:900;cursor:pointer}
     .cta[disabled]{opacity:.6;cursor:not-allowed}
 
-    /* --- Mobile 优化（≤ 640px）--- */
-    @media (max-width:640px){
-      .wrap{ padding:0 12px; }
-      .hotel{
-        grid-template-columns:1fr;      /* 三列 → 单列堆叠 */
-        gap:10px;padding:10px;border-radius:14px;
-      }
-      .img{ height:180px; }
-      .title{ font-size:18px; }
-      .score{ gap:6px;font-size:13px; }
-      .ranking{ font-size:12px;margin-top:6px; }
-      .bullets{ margin-top:6px; }
-
-      .inline-badge{ font-size:13px;padding:6px 10px;margin-top:6px; }
-
-      .right{
-        justify-items:stretch;align-content:start;gap:6px;
-      }
-      .price{ font-size:20px;text-align:left; }
-      .refund{ text-align:left;font-size:12px; }
-      .cta{ width:100%;padding:14px 16px;font-size:16px;border-radius:999px; }
-      .fav{ width:32px;height:32px;right:8px;top:8px; }
+    /* Mobile: 单列堆叠 */
+    @media (max-width: 720px){
+      .hotel{grid-template-columns:1fr;gap:12px}
+      .img{height:200px}
+      .right{justify-items:start}
+      .price{text-align:left}
+      .refund{text-align:left}
     }
   </style>
 </head>
@@ -71,44 +51,41 @@
   </div>
 
   <script>
-    // 固定条件：A（Past/Past）
-    const CONDITION = 'A';
+    // ======= 配置：把这里换成你的 Apps Script Web App URL（以 /exec 结尾）=======
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbx8RI57cQuMxO22BvebSMnMZ0lrektF-xciI4KGolksuV_mnbR2LIZ_RZr418rIFs7l/exec";
 
-    // ===== URL 参数 =====
-    const qs = new URLSearchParams(location.search);
-    let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
-    const subj = qs.get('subj') || '';
-
-    // ===== 随机（仅用于上下顺序）=====
-    let x = seed || 123456789;
-    function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
-    function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
-
-    // ===== 统一品质线索 =====
+    const CONDITION = 'A'; // Past/Past
     const SAME_PRICE = 'US$301';
     const REVIEW_COUNT = 324;
     const RATING = '4.5';
 
-    // ===== 酒店数据 =====
     const HOTEL_A = { id:'A', name:'Palm Tree Inn', img:'hotel1.jpg', tags:['精品','古雅','浪漫'] };
     const HOTEL_B = { id:'B', name:'Rotex Western Inn', img:'hotel2.jpg', tags:['安静','舒适','便捷'] };
 
-    function label(kind){ return kind==='past' ? '过去30天内超低价' : '未来30天内超低价'; }
-
-    // ===== 单次点击锁 + 验证码 =====
+    const qs = new URLSearchParams(location.search);
+    let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
+    const subj = qs.get('subj') || '';
     const TEST_MODE = !subj;
     const LOCK_KEY = subj ? `choice_lock_${subj}` : 'choice_lock_tmp';
+
+    if(qs.get('reset')==='1'){ localStorage.removeItem(`choice_lock_${subj}`); sessionStorage.removeItem('choice_lock_tmp'); }
+
     function isLocked(){
       try{
-        return TEST_MODE ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null')
-                         : JSON.parse(localStorage.getItem(LOCK_KEY)||'null');
+        return TEST_MODE
+          ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null')
+          : JSON.parse(localStorage.getItem(LOCK_KEY)||'null');
       }catch(e){ return null; }
     }
     function setLock(payload){
       if(TEST_MODE) sessionStorage.setItem(LOCK_KEY, JSON.stringify(payload));
       else localStorage.setItem(LOCK_KEY, JSON.stringify(payload));
     }
-    if(qs.get('reset')==='1'){ localStorage.removeItem(`choice_lock_${subj}`); sessionStorage.removeItem('choice_lock_tmp'); }
+
+    // 简易随机
+    let x = seed || 123456789;
+    function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
+    function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
     function genCode(seedStr){
       let h = 2166136261;
@@ -117,6 +94,16 @@
       return 'H' + String(n).padStart(6,'0');
     }
     async function copy(text){ try{ await navigator.clipboard.writeText(text); }catch(e){} }
+
+    // 日志上报到 Google Sheet
+    function logClick({subj, condition, hotel, isFuture, code}){
+      if(!GAS_URL) return;
+      fetch(GAS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" }, // Apps Script 端 JSON.parse(e.postData.contents)
+        body: JSON.stringify({ subj, condition, hotel, isFuture, code })
+      }).catch(()=>{});
+    }
 
     function makeCard(hotel){
       const el = document.createElement('div');
@@ -130,52 +117,52 @@
           <h3 class="title">${hotel.name}</h3>
           <div class="score"><span>${RATING}</span><span class="dots">●●●●●◐</span><span class="meta">（${REVIEW_COUNT.toLocaleString()} 条点评）</span></div>
           <span class="ranking">在洛杉矶的 1,051 处住宿中排行榜前十</span>
-          <ul class="bullets">
-            <li>关键词：${hotel.tags.join(' ・ ')}</li>
-          </ul>
-          <div class="inline-badge">${label('past')}</div>
+          <ul class="bullets"><li>关键词：${hotel.tags.join(' ・ ')}</li></ul>
+          <div class="inline-badge">过去30天内超低价</div>
         </div>
         <div class="right">
           <div class="price">${SAME_PRICE}</div>
           <div class="refund">可全额退款<br>无需预付款</div>
-          <a class="meta" href="#">查看优惠</a>
+          <a class="meta" href="javascript:void(0)">查看优惠</a>
           <button class="cta">查看酒店</button>
         </div>`;
 
       el.querySelector('.cta').addEventListener('click', ()=>{
         if(isLocked()){ alert('您已提交过选择，请返回问卷继续填写。'); return; }
         const hotelName = el.querySelector('.title').textContent;
-        const isFuture = false; // A 条件下均为 past
+        const isFuture = false; // A 页面固定为过去
         const code = genCode(`${subj}|${CONDITION}|${hotelName}|${isFuture}`);
 
         setLock({ subj, condition:CONDITION, hotelName, isFuture, code, ts:new Date().toISOString() });
+        el.querySelector('.inline-badge').textContent = `已记录您的选择，请填写其他问卷内容。验证码：${code}（已复制）`;
+        el.querySelector('.inline-badge').style.background = '#0ea5e9';
+        el.querySelector('.inline-badge').style.fontSize = '15px';
+        document.querySelectorAll('.cta').forEach(btn=> btn.disabled = true);
 
-        const badge = el.querySelector('.inline-badge');
-        badge.textContent = `已记录您的选择，请填写其他问卷内容。验证码：${code}（已复制）`;
-        badge.style.background = '#0ea5e9';
-        badge.style.fontSize = '15px';
-        document.querySelectorAll('.cta').forEach(btn=>{ btn.disabled = true; });
         copy(code);
+        // 上报日志
+        logClick({subj, condition:CONDITION, hotel:hotelName, isFuture, code});
       });
 
       return el;
     }
 
     function render(){
-      // 两张卡都是 past；仅随机上下顺序（如需固定，去掉 shuffle 即可）
-      const hotels = shuffle([ makeCard(HOTEL_A), makeCard(HOTEL_B) ]);
       const list = document.getElementById('list');
-      list.innerHTML=''; hotels.forEach(n=> list.appendChild(n));
+      const nodes = shuffle([ makeCard(HOTEL_A), makeCard(HOTEL_B) ]);
+      list.innerHTML = '';
+      nodes.forEach(n=> list.appendChild(n));
 
       const lock = isLocked();
       if(lock){
-        document.querySelectorAll('.cta').forEach(btn=>{ btn.disabled = true; });
+        document.querySelectorAll('.cta').forEach(btn=> btn.disabled = true);
         document.querySelectorAll('.inline-badge').forEach(b=>{
           b.textContent = `已记录您的选择：${lock.hotelName}（过去）。验证码：${lock.code}`;
           b.style.background='#0ea5e9'; b.style.fontSize='15px';
         });
       }
     }
+
     render();
   </script>
 </body>
