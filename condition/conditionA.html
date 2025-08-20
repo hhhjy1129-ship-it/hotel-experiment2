@@ -4,8 +4,10 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="robots" content="noindex,nofollow" />
-<title>Horizonte</title>
+<title>Horizonte – Condition A</title>
 <style>
+  .next{background:#3b82f6;color:#fff;border-radius:999px;padding:10px 14px;font-weight:800;text-decoration:none}
+  .next:hover{opacity:.9}
   :root{--card-gap:16px}
   *{box-sizing:border-box}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#f8fafc;color:#1e293b}
@@ -68,9 +70,9 @@
 
 <script>
   // ===== Config (replace the two URLs below) =====
-  const GAS_URL = "https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT/exec"; // overseas endpoint for data collection
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbw8A3a1VDXtOOaG3rfQ850fKBhnpTsj6rzMD9eLj9UY49r6ljt5hsvNkFUegcIrMWw/exec";
   const PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete?cc=REPLACE_CODE"; // from Prolific
-  const SURVEY_URL = "https://YOUR-SURVEY-LINK"; // your Credamo/Jinshuju/Qualtrics link
+  const SURVEY_URL = "https://www.credamo.com/s/B7Rruqano/"; // optional: add ?code=cdmx5ybs5Zvq if your survey requires an access code // your Credamo/Jinshuju/Qualtrics link
   const CONDITION = 'A';
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
@@ -165,6 +167,7 @@
           <button class="cta">Select</button>
         </div>
         <a class="meta" href="javascript:void(0)">View deal</a>
+        <a class="cta next" style="display:none" href="#" role="button">Continue to survey</a>
       </div>`;
 
     // favorite
@@ -187,29 +190,31 @@
         ? `Your choice is recorded. Verification code: ${code} (copied)`
         : `Your choice is recorded. Verification code: ${code} (long-press to copy)`;
       badge.style.background='#0ea5e9'; badge.style.fontSize='15px';
-      document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
+      document.querySelectorAll('button.cta').forEach(btn=>btn.disabled=true);
 
       // include Prolific IDs in the payload
       logClick({
         subj, condition:CONDITION, hotel:hotelName, isFuture, code, seed,
         prolific: { PROLIFIC_PID, STUDY_ID, SESSION_ID },
+        ua: navigator.userAgent,
         ts: Date.now()
       });
 
-      // redirect to Survey (Credamo/Jinshuju/etc.) carrying IDs & choice as query
-      setTimeout(()=>{
-        const params = new URLSearchParams({
-          PROLIFIC_PID, STUDY_ID, SESSION_ID,
-          condition: CONDITION,
-          hotel: hotelName,
-          isFuture: String(isFuture),
-          code,
-          seed: String(seed)
-        });
-        if (SURVEY_URL && SURVEY_URL.startsWith('http')) {
-          location.href = `${SURVEY_URL}?${params.toString()}`;
-        }
-      }, 800);
+      // show Next link to Survey with IDs & choice (no auto redirect)
+      const nextLink = el.querySelector('.next');
+      const params = new URLSearchParams({
+        PROLIFIC_PID, STUDY_ID, SESSION_ID,
+        condition: CONDITION,
+        hotel: hotelName,
+        isFuture: String(isFuture),
+        code,
+        seed: String(seed)
+      });
+      if (nextLink) {
+        nextLink.href = `${SURVEY_URL}?${params.toString()}`;
+        nextLink.style.display = 'inline-block';
+        nextLink.focus();
+      }
     });
 
     return el;
