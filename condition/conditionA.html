@@ -33,7 +33,7 @@
   .amenities{margin:6px 0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
   .amenity-chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:13px;font-weight:700;border:1px solid #e2e8f0}
   .right{display:grid;align-content:center;justify-items:end;gap:8px}
-  .price-badge{padding:.5rem .8rem;border-radius:999px;font-size:.95rem;font-weight:900;line-height:1;background:#16a34a;color:#fff;box-shadow:0 3px 8px rgba(22,163,74,.25);white-space:normal;text-align:center;max-width:100%}
+  .price-badge{white-space:normal;text-align:center;max-width:100%}
   .buy-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
   .price .currency{font-weight:800;font-size:1.1rem;line-height:1}
   .price .amount{font-weight:900;font-size:1.9rem;line-height:1}
@@ -70,6 +70,7 @@
   // ===== Config (replace the two URLs below) =====
   const GAS_URL = "https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT/exec"; // overseas endpoint for data collection
   const PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete?cc=REPLACE_CODE"; // from Prolific
+  const SURVEY_URL = "https://YOUR-SURVEY-LINK"; // your Credamo/Jinshuju/Qualtrics link
   const CONDITION = 'A';
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
@@ -195,12 +196,20 @@
         ts: Date.now()
       });
 
-      // redirect to Prolific completion
+      // redirect to Survey (Credamo/Jinshuju/etc.) carrying IDs & choice as query
       setTimeout(()=>{
-        if(PROLIFIC_COMPLETION_URL && PROLIFIC_COMPLETION_URL.startsWith('https://')){
-          location.href = PROLIFIC_COMPLETION_URL;
+        const params = new URLSearchParams({
+          PROLIFIC_PID, STUDY_ID, SESSION_ID,
+          condition: CONDITION,
+          hotel: hotelName,
+          isFuture: String(isFuture),
+          code,
+          seed: String(seed)
+        });
+        if (SURVEY_URL && SURVEY_URL.startsWith('http')) {
+          location.href = `${SURVEY_URL}?${params.toString()}`;
         }
-      }, 1000);
+      }, 800);
     });
 
     return el;
