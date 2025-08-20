@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -9,26 +9,20 @@
   :root{--card-gap:16px}
   *{box-sizing:border-box}
   body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#f8fafc;color:#1e293b}
-
-  /* 顶部导航（静态 UI） */
   .topbar{position:sticky;top:0;z-index:60;background:#fff}
   .searchline{display:flex;gap:10px;padding:12px 16px;border-bottom:1px solid #eef2f7;align-items:center;overflow:auto}
   .pill{flex:0 0 auto;padding:10px 14px;border-radius:999px;border:1px solid #dbe3ee;background:#fff;font-weight:800;font-size:14px;color:#0f172a}
   .filters{display:flex;gap:10px;padding:10px 16px;border-bottom:1px solid #eef2f7;overflow:auto;white-space:nowrap;background:#fff}
   .chip{padding:8px 12px;border-radius:999px;border:1px solid #dbe3ee;background:#fff;font-weight:700;font-size:14px}
   .chip.active{border-color:#0ea5e9;box-shadow:0 0 0 2px rgba(14,165,233,.15) inset}
-
   .wrap{max-width:1100px;margin:16px auto;padding:0 16px}
-
   .hotel{display:grid;grid-template-columns:320px 1fr 190px;gap:var(--card-gap);border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:12px}
   .hotel + .hotel{margin-top:14px}
-
   .imgwrap{position:relative;border-radius:12px;overflow:hidden}
   .img{width:100%;height:200px;object-fit:cover;display:block;background:#e5e7eb}
   .fav{position:absolute;right:10px;top:10px;width:38px;height:38px;border-radius:999px;border:1px solid #e2e8f0;background:#fff;display:grid;place-items:center;box-shadow:0 4px 10px rgba(0,0,0,.1);cursor:pointer}
   .fav::before{content:"\2661";color:#64748b;font-size:20px;line-height:1}
   .fav.active::before{content:"\2665";color:#ef4444}
-
   .title{font-size:22px;font-weight:900;margin:0 0 6px}
   .score{display:flex;align-items:center;gap:8px;color:#065f46}
   .dots{letter-spacing:1px}
@@ -36,10 +30,8 @@
   .ranking{margin:8px 0;color:#b91c1c;font-weight:700;font-size:14px;border:1px solid #fca5a5;border-radius:6px;padding:4px 6px;display:inline-block}
   .bullets{margin:8px 0 0 0;padding:0 0 0 22px}
   .bullets li{margin:4px 0}
-
   .amenities{margin:6px 0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
   .amenity-chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:13px;font-weight:700;border:1px solid #e2e8f0}
-
   .right{display:grid;align-content:center;justify-items:end;gap:8px}
   .price-badge{padding:.5rem .8rem;border-radius:999px;font-size:.95rem;font-weight:900;line-height:1;background:#16a34a;color:#fff;box-shadow:0 3px 8px rgba(22,163,74,.25);white-space:nowrap}
   .buy-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
@@ -47,7 +39,6 @@
   .price .amount{font-weight:900;font-size:1.9rem;line-height:1}
   .cta{background:#22c55e;color:#052e16;border:0;border-radius:999px;padding:12px 16px;font-weight:900;cursor:pointer}
   .cta[disabled]{opacity:.6;cursor:not-allowed}
-
   @media (max-width:720px){
     .hotel{grid-template-columns:1fr;gap:12px}
     .img{height:200px}
@@ -61,96 +52,86 @@
 <body>
   <div class="topbar">
     <div class="searchline">
-      <div class="pill">入住 今天</div><div class="pill">退房 明天</div><div class="pill">1 客房 · 2 人</div>
+      <div class="pill">Check in Today</div><div class="pill">Check out Tomorrow</div><div class="pill">1 Room · 2 Guests</div>
     </div>
     <div class="filters">
-      <button class="chip active">价格</button><button class="chip">评分 4.5+</button><button class="chip">可退</button>
-      <button class="chip">含早</button><button class="chip">地铁附近</button><button class="chip">有优惠</button>
-      <button class="chip">设施</button><button class="chip">星级</button>
+      <button class="chip active">Price</button><button class="chip">Rating 4.5+</button><button class="chip">Free cancel</button>
+      <button class="chip">Breakfast</button><button class="chip">Near Subway</button><button class="chip">Deals</button>
+      <button class="chip">Amenities</button><button class="chip">Stars</button>
     </div>
   </div>
 
   <div class="wrap"><div id="list"></div></div>
 
 <script>
-  // ===== 配置 =====
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbwu-I78rEZySGxUZ5ZHp3KbPpHSf28Zy_UtURNteNnK8e8QnHIAIrdremuBM258bqhZ/exec";
+  // ===== Config =====
+  const GAS_URL = "https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT/exec"; // your overseas endpoint
+  const PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete?cc=REPLACE_CODE"; // from Prolific
   const CONDITION = 'A';
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
   const RATING = '4.5';
-  const UNIQUE_CODE = true;
 
-  const HOTEL_A = { id:'A', name:'Palm Tree Inn', img:'hotel1.jpg', tags:['精品','古雅','浪漫'] };
-  const HOTEL_B = { id:'B', name:'Rotex Western Inn', img:'hotel2.jpg', tags:['安静','舒适','便捷'] };
+  const HOTEL_A = { id:'A', name:'Palm Tree Inn', img:'hotel1.jpg', tags:['Boutique','Vintage','Romantic'] };
+  const HOTEL_B = { id:'B', name:'Rotex Western Inn', img:'hotel2.jpg', tags:['Quiet','Comfort','Convenient'] };
 
   const qs = new URLSearchParams(location.search);
+  // Prolific params
+  const PROLIFIC_PID = qs.get('PROLIFIC_PID') || '';
+  const STUDY_ID = qs.get('STUDY_ID') || '';
+  const SESSION_ID = qs.get('SESSION_ID') || '';
+
   let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
-  const subj = qs.get('subj') || '';
-
-  // === 按天解锁 ===
-  const dayKey = new Date().toLocaleDateString('en-CA'); // 2025-08-20
+  const subj = PROLIFIC_PID || qs.get('subj') || ''; // prefer Prolific PID as subject id
   const TEST_MODE = !subj;
-  const LOCK_KEY = TEST_MODE
-    ? `choice_lock_tmp_${CONDITION}_${dayKey}`
-    : `choice_lock_${subj}_${CONDITION}_${dayKey}`;
+  const LOCK_KEY = subj ? `choice_lock_${subj}` : 'choice_lock_tmp';
 
-  if(qs.get('reset')==='1'){
-    localStorage.removeItem(`choice_lock_${subj}_${CONDITION}_${dayKey}`);
-    sessionStorage.removeItem(`choice_lock_tmp_${CONDITION}_${dayKey}`);
-  }
-  function isLocked(){
-    try{
-      return TEST_MODE
-        ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null')
-        : JSON.parse(localStorage.getItem(LOCK_KEY)||'null');
-    }catch(e){ return null; }
-  }
-  function setLock(payload){
-    if(TEST_MODE) sessionStorage.setItem(LOCK_KEY, JSON.stringify(payload));
-    else localStorage.setItem(LOCK_KEY, JSON.stringify(payload));
-  }
+  if(qs.get('reset')==='1'){ localStorage.removeItem(`choice_lock_${subj}`); sessionStorage.removeItem('choice_lock_tmp'); }
+  function isLocked(){ try{ return TEST_MODE ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null') : JSON.parse(localStorage.getItem(LOCK_KEY)||'null'); }catch(e){ return null; } }
+  function setLock(payload){ if(TEST_MODE) sessionStorage.setItem(LOCK_KEY, JSON.stringify(payload)); else localStorage.setItem(LOCK_KEY, JSON.stringify(payload)); }
 
+  // PRNG for shuffle
   let x = seed || 123456789;
   function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
   function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-  // FNV-like 简易散列 → 6 位码
-  function genCode(seedStr){
-    let h = 2166136261;
-    for (let i=0;i<seedStr.length;i++){ h ^= seedStr.charCodeAt(i); h = (h>>>0)*16777619; }
-    const n = (h>>>0) % 1000000;
-    return 'H' + String(n).padStart(6,'0');
+  // Stable, low-collision code: random 12-char base36
+  function genCode(){
+    const arr = new Uint32Array(2);
+    crypto.getRandomValues(arr);
+    const big = (BigInt(arr[0]) << 32n) | BigInt(arr[1]);
+    return 'H' + big.toString(36).slice(-12).toUpperCase();
   }
 
-  async function copy(text){ try{ await navigator.clipboard.writeText(text); }catch(e){} }
+  async function copy(text){
+    try{
+      if(navigator.clipboard && window.isSecureContext){
+        await navigator.clipboard.writeText(text); return true;
+      }
+    }catch(e){}
+    return false;
+  }
 
-  // ===== 稳定上报（移动端三层兜底）=====
-  async function logClick(payload){
-    const url = GAS_URL;
-    try {
-      const blob = new Blob([JSON.stringify(payload)], { type: "text/plain;charset=UTF-8" });
-      if (navigator.sendBeacon && navigator.sendBeacon(url, blob)) return;
-    } catch(e){}
-    try {
-      await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify(payload),
-        mode: "no-cors",
-        keepalive: true,
-        cache: "no-store"
-      });
-      return;
-    } catch(e){}
-    try {
-      const img = new Image();
-      img.width = img.height = 1;
-      img.referrerPolicy = "no-referrer";
-      img.src = url + "?d=" + encodeURIComponent(JSON.stringify(payload)) + "&t=" + Date.now();
-      document.body.appendChild(img);
-      setTimeout(()=>{ try{ document.body.removeChild(img); }catch(_){} }, 5000);
-    } catch(e){}
+  // Mobile-friendly logging to overseas endpoint
+  function logClick(payload){
+    if(!GAS_URL) return;
+    const json = JSON.stringify(payload);
+    try{
+      if (navigator.sendBeacon) {
+        const ok = navigator.sendBeacon(GAS_URL, new TextEncoder().encode(json));
+        if (ok) return;
+      }
+    }catch(e){}
+    const ctrl = new AbortController();
+    setTimeout(()=>ctrl.abort(), 3000);
+    fetch(GAS_URL, {
+      method: "POST",
+      mode: "no-cors",
+      body: json,
+      keepalive: true,
+      signal: ctrl.signal,
+      cache: "no-store",
+    }).catch(()=>{});
   }
 
   function makeCard(hotel){
@@ -161,56 +142,63 @@
     el.innerHTML=`
       <div class="imgwrap">
         <img class="img" src="${hotel.img}" alt="${hotel.name}">
-        <div class="fav" title="收藏"></div>
+        <div class="fav" title="Favorite"></div>
       </div>
       <div class="mid">
         <h3 class="title">${hotel.name}</h3>
-        <div class="score"><span>${RATING}</span><span class="dots">●●●●●◐</span><span class="meta">（${REVIEW_COUNT.toLocaleString()} 条点评）</span></div>
-        <span class="ranking">在洛杉矶的 1,051 处住宿中排行榜前十</span>
-        <ul class="bullets"><li>关键词：${hotel.tags.join(' ・ ')}</li></ul>
+        <div class="score"><span>${RATING}</span><span class="dots">●●●●●◐</span><span class="meta">(${REVIEW_COUNT.toLocaleString()} reviews)</span></div>
+        <span class="ranking">Top 10 among 1,051 stays in Los Angeles</span>
+        <ul class="bullets"><li>Keywords: ${hotel.tags.join(' · ')}</li></ul>
         <div class="amenities">
-          <span class="amenity-chip">洗衣房</span><span class="amenity-chip">健身室</span>
-          <span class="amenity-chip">拍照出片</span><span class="amenity-chip">智能客控</span>
+          <span class="amenity-chip">Laundry</span><span class="amenity-chip">Gym</span>
+          <span class="amenity-chip">Instagrammable</span><span class="amenity-chip">Smart room</span>
         </div>
       </div>
       <div class="right">
-        <span class="price-badge">过去30天内超低价</span>
+        <span class="price-badge">Lowest price in the past 30 days</span>
         <div class="buy-row">
           <div class="price"><span class="currency">${priceCurrency}</span><span class="amount">${priceAmount}</span></div>
-          <button class="cta">点击购买</button>
+          <button class="cta">Select</button>
         </div>
-        <a class="meta" href="javascript:void(0)">查看优惠</a>
+        <a class="meta" href="javascript:void(0)">View deal</a>
       </div>`;
 
-    // 收藏按钮
+    // fav
     const fav=el.querySelector('.fav');
     fav.setAttribute('role','button'); fav.setAttribute('aria-pressed','false');
     fav.addEventListener('click',()=>{ const on=fav.classList.toggle('active'); fav.setAttribute('aria-pressed',on?'true':'false'); });
 
     // CTA
-    el.querySelector('.cta').addEventListener('click',()=>{
-      if(isLocked()){ alert('您已提交过选择，请返回问卷继续填写。'); return; }
+    el.querySelector('.cta').addEventListener('click', async ()=>{
+      if(isLocked()){ alert('You have already submitted. Please return to the survey.'); return; }
       const hotelName=el.querySelector('.title').textContent;
-      const isFuture=false;
+      const isFuture=false; // page A fixed
 
-      const codeSeedBase = `${subj}|${CONDITION}|${hotelName}|${isFuture}`;
-      const codeSeed = UNIQUE_CODE ? `${codeSeedBase}|${Date.now()}` : codeSeedBase;
-      const code=genCode(codeSeed);
+      const code = genCode();
 
       setLock({subj,condition:CONDITION,hotelName,isFuture,code,ts:new Date().toISOString()});
 
       const badge=el.querySelector('.price-badge');
-      badge.textContent=`已记录您的选择，请填写其他问卷内容。验证码：${code}（已复制）`;
+      const copied = await copy(code);
+      badge.textContent = copied
+        ? `Your choice is recorded. Verification code: ${code} (copied)`
+        : `Your choice is recorded. Verification code: ${code} (long-press to copy)`;
       badge.style.background='#0ea5e9'; badge.style.fontSize='15px';
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
 
-      copy(code);
-
+      // Include Prolific IDs in the payload
       logClick({
-        subj, condition:CONDITION, hotel:hotelName, isFuture,
-        code, seed, ts:Date.now(),
-        ua:navigator.userAgent, __ua:navigator.userAgent
+        subj, condition:CONDITION, hotel:hotelName, isFuture, code, seed,
+        prolific: { PROLIFIC_PID, STUDY_ID, SESSION_ID },
+        ts: Date.now()
       });
+
+      // Optional: auto-redirect to Prolific completion after a short delay
+      setTimeout(()=>{
+        if(PROLIFIC_COMPLETION_URL && PROLIFIC_COMPLETION_URL.startsWith('https://')){
+          location.href = PROLIFIC_COMPLETION_URL; // marks submission complete on Prolific
+        }
+      }, 1000);
     });
 
     return el;
@@ -224,7 +212,7 @@
     if(lock){
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
       document.querySelectorAll('.price-badge').forEach(b=>{
-        b.textContent=`已记录您的选择：${lock.hotelName}（过去）。验证码：${lock.code}`;
+        b.textContent=`Recorded: ${lock.hotelName} (past). Code: ${lock.code}`;
         b.style.background='#0ea5e9'; b.style.fontSize='15px';
       });
     }
@@ -233,4 +221,3 @@
 </script>
 </body>
 </html>
-
