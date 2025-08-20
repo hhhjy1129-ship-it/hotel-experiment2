@@ -66,7 +66,7 @@
 
 <script>
   // ===== 配置 =====
-  const GAS_URL = "https://script.google.com/macros/s/AKfycbyP6Bg4NDiiAsdPJKHd4_iJUBSHfjhin6tAJU2O9S1sHRbwRfW9i0i6_bWJnm-WKNZQ/exec";
+  const GAS_URL = "https://script.google.com/macros/s/AKfycbwu-I78rEZySGxUZ5ZHp3KbPpHSf28Zy_UtURNteNnK8e8QnHIAIrdremuBM258bqhZ/exec";
   const CONDITION = 'B';
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
@@ -80,12 +80,29 @@
   const qs = new URLSearchParams(location.search);
   let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
   const subj = qs.get('subj') || '';
-  const TEST_MODE = !subj;
-  const LOCK_KEY = subj ? `choice_lock_${subj}_${CONDITION}` : 'choice_lock_tmp';
 
-  if(qs.get('reset')==='1'){ localStorage.removeItem(`choice_lock_${subj}_${CONDITION}`); sessionStorage.removeItem('choice_lock_tmp'); }
-  function isLocked(){ try{ return TEST_MODE ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null') : JSON.parse(localStorage.getItem(LOCK_KEY)||'null'); }catch(e){ return null; } }
-  function setLock(payload){ if(TEST_MODE) sessionStorage.setItem(LOCK_KEY, JSON.stringify(payload)); else localStorage.setItem(LOCK_KEY, JSON.stringify(payload)); }
+  // === 按天解锁 ===
+  const dayKey = new Date().toLocaleDateString('en-CA');
+  const TEST_MODE = !subj;
+  const LOCK_KEY = TEST_MODE
+    ? `choice_lock_tmp_${CONDITION}_${dayKey}`
+    : `choice_lock_${subj}_${CONDITION}_${dayKey}`;
+
+  if(qs.get('reset')==='1'){
+    localStorage.removeItem(`choice_lock_${subj}_${CONDITION}_${dayKey}`);
+    sessionStorage.removeItem(`choice_lock_tmp_${CONDITION}_${dayKey}`);
+  }
+  function isLocked(){
+    try{
+      return TEST_MODE
+        ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null')
+        : JSON.parse(localStorage.getItem(LOCK_KEY)||'null');
+    }catch(e){ return null; }
+  }
+  function setLock(payload){
+    if(TEST_MODE) sessionStorage.setItem(LOCK_KEY, JSON.stringify(payload));
+    else localStorage.setItem(LOCK_KEY, JSON.stringify(payload));
+  }
 
   let x = seed || 123456789;
   function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
@@ -101,21 +118,32 @@
 
   async function copy(text){ try{ await navigator.clipboard.writeText(text); }catch(e){} }
 
-  // ---- 稳定上报（移动端友好）----
-  function logClick(payload){
-    if(!GAS_URL) return;
-    try{
-      const blob = new Blob([JSON.stringify(payload)], { type: "text/plain" });
-      if (navigator.sendBeacon && navigator.sendBeacon(GAS_URL, blob)) {
-        return;
-      }
-    }catch(e){}
-    fetch(GAS_URL, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: JSON.stringify(payload),
-      keepalive: true
-    }).catch(()=>{});
+  // ===== 稳定上报（移动端三层兜底）=====
+  async function logClick(payload){
+    const url = GAS_URL;
+    try {
+      const blob = new Blob([JSON.stringify(payload)], { type: "text/plain;charset=UTF-8" });
+      if (navigator.sendBeacon && navigator.sendBeacon(url, blob)) return;
+    } catch(e){}
+    try {
+      await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain" },
+        body: JSON.stringify(payload),
+        mode: "no-cors",
+        keepalive: true,
+        cache: "no-store"
+      });
+      return;
+    } catch(e){}
+    try {
+      const img = new Image();
+      img.width = img.height = 1;
+      img.referrerPolicy = "no-referrer";
+      img.src = url + "?d=" + encodeURIComponent(JSON.stringify(payload)) + "&t=" + Date.now();
+      document.body.appendChild(img);
+      setTimeout(()=>{ try{ document.body.removeChild(img); }catch(_){} }, 5000);
+    } catch(e){}
   }
 
   function labelText(isFuture){ return isFuture ? '未来30天内超低价' : '过去30天内超低价'; }
@@ -160,25 +188,24 @@
       const hotelName=el.querySelector('.title').textContent;
       const isFuture=hotel.isFuture;
 
-      // 唯一/固定验证码控制
       const codeSeedBase = `${subj}|${CONDITION}|${hotelName}|${isFuture}`;
       const codeSeed = UNIQUE_CODE ? `${codeSeedBase}|${Date.now()}` : codeSeedBase;
       const code=genCode(codeSeed);
 
-      // 本地锁定，避免重复提交
       setLock({subj,condition:CONDITION,hotelName,isFuture,code,ts:new Date().toISOString()});
 
-      // UI 提示
       const badge=el.querySelector('.price-badge');
       badge.textContent=`已记录您的选择，请填写其他问卷内容。验证码：${code}（已复制）`;
       badge.style.background='#0ea5e9'; badge.style.fontSize='15px';
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
 
-      // 复制验证码
       copy(code);
 
-      // 上报（sendBeacon 优先）
-      logClick({subj,condition:CONDITION,hotel:hotelName,isFuture,code,seed,ts:Date.now(),ua:navigator.userAgent,__ua:navigator.userAgent});
+      logClick({
+        subj, condition:CONDITION, hotel:hotelName, isFuture,
+        code, seed, ts:Date.now(),
+        ua:navigator.userAgent, __ua:navigator.userAgent
+      });
     });
 
     return el;
@@ -186,7 +213,7 @@
 
   function render(){
     const list=document.getElementById('list');
-    const cards=shuffle([makeCard(HOTEL_FUTURE),makeCard(HOTEL_PAST)]);
+    const cards=shuffle([makeCard(HOTEL_FUTURE),makeCard(HOTEL_PAST)]); // Palm=未来 已固定；上下随机
     list.innerHTML=''; cards.forEach(n=>list.appendChild(n));
     const lock=isLocked();
     if(lock){
@@ -201,4 +228,3 @@
 </script>
 </body>
 </html>
-
