@@ -16,7 +16,7 @@
   .chip{padding:8px 12px;border-radius:999px;border:1px solid #dbe3ee;background:#fff;font-weight:700;font-size:14px}
   .chip.active{border-color:#0ea5e9;box-shadow:0 0 0 2px rgba(14,165,233,.15) inset}
   .wrap{max-width:1100px;margin:16px auto;padding:0 16px}
-  .hotel{display:grid;grid-template-columns:320px 1fr 190px;gap:var(--card-gap);border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:12px}
+  .hotel{display:grid;grid-template-columns:320px 1fr max-content;gap:var(--card-gap);border:1px solid #e2e8f0;border-radius:16px;background:#fff;box-shadow:0 6px 18px rgba(0,0,0,.06);padding:12px}
   .hotel + .hotel{margin-top:14px}
   .imgwrap{position:relative;border-radius:12px;overflow:hidden}
   .img{width:100%;height:200px;object-fit:cover;display:block;background:#e5e7eb}
@@ -33,12 +33,15 @@
   .amenities{margin:6px 0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
   .amenity-chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:13px;font-weight:700;border:1px solid #e2e8f0}
   .right{display:grid;align-content:center;justify-items:end;gap:8px}
-  .price-badge{padding:.5rem .8rem;border-radius:999px;font-size:.95rem;font-weight:900;line-height:1;background:#16a34a;color:#fff;box-shadow:0 3px 8px rgba(22,163,74,.25);white-space:nowrap}
+  .price-badge{padding:.5rem .8rem;border-radius:999px;font-size:.95rem;font-weight:900;line-height:1;background:#16a34a;color:#fff;box-shadow:0 3px 8px rgba(22,163,74,.25);white-space:normal;text-align:center;max-width:100%}
   .buy-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
   .price .currency{font-weight:800;font-size:1.1rem;line-height:1}
   .price .amount{font-weight:900;font-size:1.9rem;line-height:1}
   .cta{background:#22c55e;color:#052e16;border:0;border-radius:999px;padding:12px 16px;font-weight:900;cursor:pointer}
   .cta[disabled]{opacity:.6;cursor:not-allowed}
+  @media (max-width: 1024px){
+    .price-badge{font-size:.85rem;padding:.35rem .6rem}
+  }
   @media (max-width:720px){
     .hotel{grid-template-columns:1fr;gap:12px}
     .img{height:200px}
@@ -64,8 +67,8 @@
   <div class="wrap"><div id="list"></div></div>
 
 <script>
-  // ===== Config =====
-  const GAS_URL = "https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT/exec"; // your overseas endpoint
+  // ===== Config (replace the two URLs below) =====
+  const GAS_URL = "https://script.google.com/macros/s/REPLACE_WITH_YOUR_SCRIPT/exec"; // overseas endpoint for data collection
   const PROLIFIC_COMPLETION_URL = "https://app.prolific.com/submissions/complete?cc=REPLACE_CODE"; // from Prolific
   const CONDITION = 'A';
   const SAME_PRICE = 'US$301';
@@ -82,7 +85,7 @@
   const SESSION_ID = qs.get('SESSION_ID') || '';
 
   let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
-  const subj = PROLIFIC_PID || qs.get('subj') || ''; // prefer Prolific PID as subject id
+  const subj = PROLIFIC_PID || qs.get('subj') || '';
   const TEST_MODE = !subj;
   const LOCK_KEY = subj ? `choice_lock_${subj}` : 'choice_lock_tmp';
 
@@ -95,7 +98,7 @@
   function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
   function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-  // Stable, low-collision code: random 12-char base36
+  // Random 12-char base36 (very low collision)
   function genCode(){
     const arr = new Uint32Array(2);
     crypto.getRandomValues(arr);
@@ -112,7 +115,7 @@
     return false;
   }
 
-  // Mobile-friendly logging to overseas endpoint
+  // Mobile-friendly logging
   function logClick(payload){
     if(!GAS_URL) return;
     const json = JSON.stringify(payload);
@@ -151,7 +154,7 @@
         <ul class="bullets"><li>Keywords: ${hotel.tags.join(' · ')}</li></ul>
         <div class="amenities">
           <span class="amenity-chip">Laundry</span><span class="amenity-chip">Gym</span>
-          <span class="amenity-chip">Instagrammable</span><span class="amenity-chip">Smart room</span>
+          <span class="amenity-chip">City view</span><span class="amenity-chip">Smart room</span>
         </div>
       </div>
       <div class="right">
@@ -163,7 +166,7 @@
         <a class="meta" href="javascript:void(0)">View deal</a>
       </div>`;
 
-    // fav
+    // favorite
     const fav=el.querySelector('.fav');
     fav.setAttribute('role','button'); fav.setAttribute('aria-pressed','false');
     fav.addEventListener('click',()=>{ const on=fav.classList.toggle('active'); fav.setAttribute('aria-pressed',on?'true':'false'); });
@@ -172,10 +175,9 @@
     el.querySelector('.cta').addEventListener('click', async ()=>{
       if(isLocked()){ alert('You have already submitted. Please return to the survey.'); return; }
       const hotelName=el.querySelector('.title').textContent;
-      const isFuture=false; // page A fixed
+      const isFuture=false; // page A fixed: past
 
       const code = genCode();
-
       setLock({subj,condition:CONDITION,hotelName,isFuture,code,ts:new Date().toISOString()});
 
       const badge=el.querySelector('.price-badge');
@@ -186,17 +188,17 @@
       badge.style.background='#0ea5e9'; badge.style.fontSize='15px';
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
 
-      // Include Prolific IDs in the payload
+      // include Prolific IDs in the payload
       logClick({
         subj, condition:CONDITION, hotel:hotelName, isFuture, code, seed,
         prolific: { PROLIFIC_PID, STUDY_ID, SESSION_ID },
         ts: Date.now()
       });
 
-      // Optional: auto-redirect to Prolific completion after a short delay
+      // redirect to Prolific completion
       setTimeout(()=>{
         if(PROLIFIC_COMPLETION_URL && PROLIFIC_COMPLETION_URL.startsWith('https://')){
-          location.href = PROLIFIC_COMPLETION_URL; // marks submission complete on Prolific
+          location.href = PROLIFIC_COMPLETION_URL;
         }
       }, 1000);
     });
