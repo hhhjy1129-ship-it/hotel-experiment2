@@ -3,58 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>酒店实验入口</title>
+<title>酒店实验 · 入口</title>
 <style>
-  body{margin:0;padding:32px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Hiragino Sans GB",sans-serif;background:#f8fafc;color:#0f172a}
-  h1{margin:0 0 16px}
-  p.desc{margin:0 0 20px;color:#475569}
-  .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;max-width:780px;padding:18px 20px;box-shadow:0 8px 20px rgba(0,0,0,.06)}
-  ul{padding-left:20px;margin:12px 0 0}
-  li{margin:8px 0}
-  a.btn,button.btn{display:inline-block;margin:10px 10px 0 0;padding:10px 14px;border-radius:10px;border:1px solid #cbd5e1;background:#0ea5e9;color:#fff;text-decoration:none;font-weight:800;cursor:pointer}
-  a.btn.secondary,button.btn.secondary{background:#fff;color:#0f172a}
-  code{background:#f1f5f9;padding:2px 6px;border-radius:6px;border:1px solid #e2e8f0}
+  *{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,"PingFang SC",Helvetica,Arial,sans-serif;background:#f8fafc;color:#0f172a}
+  .wrap{max-width:900px;margin:40px auto;padding:0 16px}
+  h1{margin:0 0 8px;font-size:28px}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 8px 18px rgba(0,0,0,.06);padding:18px 18px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:10px 0 14px}
+  .input{flex:1;min-width:220px;display:flex;align-items:center;gap:8px}
+  input[type=text]{width:100%;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px}
+  .btn{appearance:none;border:0;border-radius:999px;background:#2563eb;color:#fff;padding:10px 16px;font-weight:800;cursor:pointer}
+  .btn.subtle{background:#0ea5e9}
+  .btn.ghost{background:#f1f5f9;color:#0f172a;border:1px solid #e2e8f0}
+  .btn:disabled{opacity:.6;cursor:not-allowed}
+  .hint{color:#475569;font-size:13px}
+  .list{margin:8px 0 0 16px}
+  code{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:6px;padding:2px 6px}
 </style>
 </head>
 <body>
+<div class="wrap">
+  <h1>酒店实验</h1>
+  <p class="hint">请输入被试编号（<code>subj</code>），系统会把 <code>subj</code> 和 <code>seed</code> 一并传到实验页面与问卷。</p>
 
-<h1>酒店实验</h1>
-<p class="desc">请选择进入的条件页面（当前入口携带的查询参数，如 <code>?subj=...&amp;seed=...</code>，将自动透传到条件页）。</p>
+  <div class="card">
+    <div class="row">
+      <div class="input">
+        <label for="subj" style="white-space:nowrap;font-weight:700">被试编号：</label>
+        <input id="subj" type="text" placeholder="例如 P2025-001" />
+      </div>
+      <button class="btn" id="enterA">进入条件 A（过去30天内超低价）</button>
+      <button class="btn" id="enterB">进入条件 B（未来30天内超低价）</button>
+      <button class="btn" id="enterC">进入条件 C（此房源超低价在售）</button>
+    </div>
 
-<div class="card">
-  <p><strong>三组组间设计：</strong></p>
-  <ul>
-    <li><strong>条件 A（过去时间 + 干扰）</strong>：两张卡片中仅有 <em>1 张</em>带徽章 <code>过去30天内最低价</code>；另一张为干扰 <code>当前价格已更新</code>。</li>
-    <li><strong>条件 B（未来时间 + 干扰）</strong>：两张卡片中仅有 <em>1 张</em>带徽章 <code>未来30天内最低价</code>；另一张为干扰 <code>当前价格已更新</code>。</li>
-    <li><strong>条件 C（无时间 + 干扰）</strong>：两张卡片中仅有 <em>1 张</em>带徽章 <code>当前最低价</code>；另一张为干扰 <code>当前价格已更新</code>。</li>
-  </ul>
+    <div class="row">
+      <button class="btn subtle" id="enterRR">随机分配（A/B/C 轮转均衡）</button>
+      <button class="btn ghost" id="enterRNG">随机分配（完全随机）</button>
+      <span class="hint">未填 <code>subj</code> 将以预览模式进入。</span>
+    </div>
 
-  <div>
-    <a id="linkA" class="btn" href="#">进入条件 A</a>
-    <a id="linkB" class="btn" href="#">进入条件 B</a>
-    <a id="linkC" class="btn" href="#">进入条件 C</a>
-    <button id="randBtn" class="btn secondary">随机进入（A/B/C）</button>
+    <details>
+      <summary class="hint">本研究的三组设计（点击展开）</summary>
+      <ul class="list">
+        <li><b>条件 A（过去）</b>：两张卡仅有一张带徽章 <em>“过去30天内超低价”</em>；另一张为干扰卡（无徽章）。</li>
+        <li><b>条件 B（未来）</b>：两张卡仅有一张带徽章 <em>“未来30天内超低价”</em>；另一张为干扰卡。</li>
+        <li><b>条件 C（基线）</b>：两张卡仅有一张带徽章 <em>“此房源超低价在售”</em>；另一张为干扰卡。</li>
+      </ul>
+    </details>
   </div>
 </div>
 
 <script>
-  // 把当前 URL 查询参数透传给目标链接
-  const params = new URLSearchParams(location.search);
-  function withParams(path){
-    const qs = params.toString();
-    return path + (qs ? ('?' + qs) : '');
+  const base = 'condition/'; // 子目录
+  function genSeed(){ return Date.now().toString().slice(-10); }
+  function go(to){
+    const subj = document.getElementById('subj').value.trim();
+    const seed = genSeed();
+    const qs = new URLSearchParams({ subj, seed });
+    // 预览模式：如果 subj 为空，仍然传 seed；实验页会自动进入 TEST_MODE
+    location.href = `${base}${to}.html?` + qs.toString();
   }
-  document.getElementById('linkA').href = withParams('condition/conditionA.html');
-  document.getElementById('linkB').href = withParams('condition/conditionB.html');
-  document.getElementById('linkC').href = withParams('condition/conditionC.html');
 
-  // 随机分配到 A/B/C
-  document.getElementById('randBtn').addEventListener('click', ()=>{
-    const targets = ['condition/conditionA.html','condition/conditionB.html','condition/conditionC.html'];
-    const pick = targets[Math.floor(Math.random()*targets.length)];
-    location.href = withParams(pick);
-  });
+  document.getElementById('enterA').onclick = ()=>go('conditionA');
+  document.getElementById('enterB').onclick = ()=>go('conditionB');
+  document.getElementById('enterC').onclick = ()=>go('conditionC');
+
+  // 轮转均衡（A→B→C 循环）
+  document.getElementById('enterRR').onclick = ()=>{
+    const key='rr_pointer_abc';
+    let i = parseInt(localStorage.getItem(key)||'0',10) % 3;
+    const page = ['conditionA','conditionB','conditionC'][i];
+    localStorage.setItem(key, (i+1)%3);
+    go(page);
+  };
+
+  // 完全随机
+  document.getElementById('enterRNG').onclick = ()=>{
+    const page = ['conditionA','conditionB','conditionC'][Math.floor(Math.random()*3)];
+    go(page);
+  };
 </script>
-
 </body>
 </html>
