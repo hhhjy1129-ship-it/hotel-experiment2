@@ -1,7 +1,60 @@
 <!doctype html>
 <html lang="zh-CN">
+<head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>酒店实验入口</title>
+<style>
+  body{margin:0;padding:32px;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Hiragino Sans GB",sans-serif;background:#f8fafc;color:#0f172a}
+  h1{margin:0 0 16px}
+  p.desc{margin:0 0 20px;color:#475569}
+  .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;max-width:780px;padding:18px 20px;box-shadow:0 8px 20px rgba(0,0,0,.06)}
+  ul{padding-left:20px;margin:12px 0 0}
+  li{margin:8px 0}
+  a.btn,button.btn{display:inline-block;margin:10px 10px 0 0;padding:10px 14px;border-radius:10px;border:1px solid #cbd5e1;background:#0ea5e9;color:#fff;text-decoration:none;font-weight:800;cursor:pointer}
+  a.btn.secondary,button.btn.secondary{background:#fff;color:#0f172a}
+  code{background:#f1f5f9;padding:2px 6px;border-radius:6px;border:1px solid #e2e8f0}
+</style>
+</head>
+<body>
+
 <h1>酒店实验</h1>
-<p><a href="condition/conditionA.html">进入条件 A（两卡都是“过去30天内超低价”）</a></p>
-<p><a href="condition/conditionB.html">进入条件 B（“未来30天内超低价” vs “过去30天内超低价”）</a></p>
+<p class="desc">请选择进入的条件页面（当前入口携带的查询参数，如 <code>?subj=...&amp;seed=...</code>，将自动透传到条件页）。</p>
+
+<div class="card">
+  <p><strong>三组组间设计：</strong></p>
+  <ul>
+    <li><strong>条件 A（过去时间 + 干扰）</strong>：两张卡片中仅有 <em>1 张</em>带徽章 <code>过去30天内最低价</code>；另一张为干扰 <code>当前价格已更新</code>。</li>
+    <li><strong>条件 B（未来时间 + 干扰）</strong>：两张卡片中仅有 <em>1 张</em>带徽章 <code>未来30天内最低价</code>；另一张为干扰 <code>当前价格已更新</code>。</li>
+    <li><strong>条件 C（无时间 + 干扰）</strong>：两张卡片中仅有 <em>1 张</em>带徽章 <code>当前最低价</code>；另一张为干扰 <code>当前价格已更新</code>。</li>
+  </ul>
+
+  <div>
+    <a id="linkA" class="btn" href="#">进入条件 A</a>
+    <a id="linkB" class="btn" href="#">进入条件 B</a>
+    <a id="linkC" class="btn" href="#">进入条件 C</a>
+    <button id="randBtn" class="btn secondary">随机进入（A/B/C）</button>
+  </div>
+</div>
+
+<script>
+  // 把当前 URL 查询参数透传给目标链接
+  const params = new URLSearchParams(location.search);
+  function withParams(path){
+    const qs = params.toString();
+    return path + (qs ? ('?' + qs) : '');
+  }
+  document.getElementById('linkA').href = withParams('condition/conditionA.html');
+  document.getElementById('linkB').href = withParams('condition/conditionB.html');
+  document.getElementById('linkC').href = withParams('condition/conditionC.html');
+
+  // 随机分配到 A/B/C
+  document.getElementById('randBtn').addEventListener('click', ()=>{
+    const targets = ['condition/conditionA.html','condition/conditionB.html','condition/conditionC.html'];
+    const pick = targets[Math.floor(Math.random()*targets.length)];
+    location.href = withParams(pick);
+  });
+</script>
+
+</body>
+</html>
