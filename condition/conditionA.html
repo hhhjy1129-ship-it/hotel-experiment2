@@ -37,7 +37,6 @@
   .amenities{margin:6px 0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
   .amenity-chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:13px;font-weight:700;border:1px solid #e2e8f0}
   .right{display:grid;align-content:center;justify-items:end;gap:8px}
-  /* 更醒目的“过去30天内超低价”徽章 */
   .price-badge{display:inline-block;white-space:nowrap;text-align:center;max-width:100%;padding:.5rem .8rem;border-radius:999px;font-size:.95rem;font-weight:900;line-height:1;background:#16a34a;color:#fff;border:2px solid #15803d;box-shadow:0 4px 12px rgba(22,163,74,.25)}
   .buy-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
   .price .currency{font-weight:800;font-size:1.1rem;line-height:1}
@@ -70,23 +69,25 @@
   <div class="wrap"><div id="list"></div></div>
 
 <script>
-  // ===== A 仅使用 Credamo（不接 Prolific / 不写 Google Sheet） =====
-  const CONDITION = 'A';
+  // ====== 配置 ======
+  const CONDITION = 'A'; // Condition A：过去时间 + 干扰
+  const FRAME_COND = 'retrospective'; // 本页的目标框架类型
   const CREDAMO_ANSWER_BASE = "https://www.credamo.com/answer.html#/s/3aqaimano"; // 换正式问卷只改这里
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
   const RATING = '4.5';
 
-  const HOTEL_A = { id:'A', name:'Palm Tree Inn',   img:'hotel1.jpg', tags:['精品','复古','浪漫'] };
-  const HOTEL_B = { id:'B', name:'Rotex Western Inn', img:'hotel2.jpg', tags:['安静','舒适','便捷'] };
+  const HOTEL_A = { id:'A', name:'Palm Tree Inn',    img:'hotel1.jpg', tags:['精品','复古','浪漫'] };
+  const HOTEL_B = { id:'B', name:'Rotex Western Inn',img:'hotel2.jpg', tags:['安静','舒适','便捷'] };
 
-  // ===== state / utils =====
+  // ====== 随机工具 / 状态 ======
   const qs = new URLSearchParams(location.search);
   let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
   const subj = qs.get('subj') || '';
   const TEST_MODE = !subj;
   const LOCK_KEY = subj ? `choice_lock_${subj}` : 'choice_lock_tmp';
   if(qs.get('reset')==='1'){ localStorage.removeItem(`choice_lock_${subj}`); sessionStorage.removeItem('choice_lock_tmp'); }
+
   function isLocked(){ try{ return TEST_MODE ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null') : JSON.parse(localStorage.getItem(LOCK_KEY)||'null'); }catch(e){ return null; } }
   function setLock(payload){ if(TEST_MODE) sessionStorage.setItem(LOCK_KEY, JSON.stringify(payload)); else localStorage.setItem(LOCK_KEY, JSON.stringify(payload)); }
 
@@ -109,14 +110,19 @@
         onClose: function(){ console.log('credamo closed'); }
       });
     } else {
-      location.href = url; // 兜底：直接打开
+      location.href = url;
     }
   }
 
-  function makeCard(hotel){
+  // ====== 生成卡片 ======
+  function makeCard(hotel, frameType, isTarget){
     const el=document.createElement('div'); el.className='hotel';
     const priceCurrency=(SAME_PRICE.match(/^[A-Z]*\$/)?.[0]||'US$');
     const priceAmount=(SAME_PRICE.match(/\d+(?:\.\d+)?/)?.[0]||'301');
+
+    // 徽章文案
+    let badgeText = '当前价格已更新'; // 干扰
+    if (frameType === 'retrospective' && isTarget) badgeText = '过去30天内最低价';
 
     el.innerHTML=`
       <div class="imgwrap">
@@ -134,7 +140,7 @@
         </div>
       </div>
       <div class="right">
-        <span class="price-badge">过去30天内超低价</span>
+        <span class="price-badge" data-frame="${isTarget ? frameType : 'none'}">${badgeText}</span>
         <div class="buy-row">
           <div class="price"><span class="currency">${priceCurrency}</span><span class="amount">${priceAmount}</span></div>
           <button class="cta">选择</button>
@@ -142,19 +148,22 @@
         <a class="meta" href="javascript:void(0)">查看优惠</a>
       </div>`;
 
+    // 收藏样式
     const fav=el.querySelector('.fav');
     fav.setAttribute('role','button'); fav.setAttribute('aria-pressed','false');
     fav.addEventListener('click',()=>{ const on=fav.classList.toggle('active'); fav.setAttribute('aria-pressed',on?'true':'false'); });
 
+    // 点击选择
     el.querySelector('.cta').addEventListener('click', async ()=>{
       if(isLocked()){ alert('您已提交过选择，请返回问卷继续填写。'); return; }
       const hotelName=el.querySelector('.title').textContent;
-      const isFuture=false; // A：过去
+      const badge=el.querySelector('.price-badge');
+      const chosenFrame = badge.dataset.frame; // 'retrospective' 或 'none'
+      const choiceIsTarget = isTarget;
 
       const code=genCode();
-      setLock({subj,condition:CONDITION,hotelName,isFuture,code,ts:new Date().toISOString()});
+      setLock({subj,condition:CONDITION,frame:chosenFrame,isTarget:choiceIsTarget,hotelName,code,ts:new Date().toISOString()});
 
-      const badge=el.querySelector('.price-badge');
       const copied = await copy(code);
       badge.textContent = copied
         ? `已记录您的选择。验证码：${code}（已复制）`
@@ -162,27 +171,44 @@
       badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
 
-      // 打开 Credamo（仅携带4个字段）
+      // 发送到问卷
       openCredamoWith({
         condition: CONDITION,
+        frame_condition: FRAME_COND,         // 本页目标框架：retrospective
+        choice_frame: chosenFrame,           // 受试选到的框架：retrospective / none
+        is_target: choiceIsTarget ? 'TRUE':'FALSE',
         hotel: hotelName,
-        isFuture: isFuture ? 'TRUE' : 'FALSE',
         code: code
       });
     });
 
+    // 标记元数据
+    el.dataset.cardId = hotel.id;
+    el.dataset.isTarget = isTarget ? 'true' : 'false';
     return el;
   }
 
+  // ====== 渲染：随机哪张为目标卡 ======
   function render(){
     const list=document.getElementById('list');
-    const nodes=shuffle([makeCard(HOTEL_A),makeCard(HOTEL_B)]);
+
+    // 随机顺序 & 随机目标
+    const hotels = shuffle([HOTEL_A, HOTEL_B]);
+    const targetIndex = Math.floor(rnd()*hotels.length); // 0 或 1
+
+    const nodes = hotels.map((h, idx) =>
+      makeCard(h, FRAME_COND, idx === targetIndex)
+    );
+
     list.innerHTML=''; nodes.forEach(n=>list.appendChild(n));
+
+    // 若已锁定，则提示
     const lock=isLocked();
     if(lock){
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
       document.querySelectorAll('.price-badge').forEach(b=>{
-        b.textContent=`已记录：${lock.hotelName}（过去）。验证码：${lock.code}`;
+        const label = (lock.frame==='retrospective' ? '过去' : '无时间');
+        b.textContent=`已记录：${lock.hotelName}（${label}）。验证码：${lock.code}`;
         b.style.background='#0ea5e9'; b.style.borderColor='#0284c7';
       });
     }
