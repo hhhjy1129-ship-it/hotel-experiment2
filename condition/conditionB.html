@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="robots" content="noindex,nofollow" />
-<title>Horizonte </title>
+<title>Horizonte – 条件B（未来）</title>
 <script src="https://app.credamo.com/credamo/js/credamo_embed.min.js"></script>
 <style>
   :root{--card-gap:16px}
@@ -34,29 +34,20 @@
   .amenities{margin:6px 0 0 22px;display:flex;flex-wrap:wrap;gap:8px}
   .amenity-chip{padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:13px;font-weight:700;border:1px solid #e2e8f0}
   .right{display:grid;align-content:center;justify-items:end;gap:8px}
-
   .price-badge{
     display:inline-block;white-space:nowrap;text-align:center;
-    padding:.50rem .85rem;border-radius:999px;font-size:.95rem;font-weight:900;line-height:1;
-    background:#16a34a;color:#fff;border:2px solid #15803d;box-shadow:0 4px 12px rgba(22,163,74,.25)
+    padding:.65rem 1.05rem;border-radius:999px;font-size:1.08rem;font-weight:900;line-height:1;
+    background:#16a34a;color:#fff;border:3px solid #15803d;box-shadow:0 6px 16px rgba(22,163,74,.28)
   }
-  .badge-slot{display:inline-block;height:36px;min-width:10ch;visibility:hidden}
+  .badge-slot{display:inline-block;height:40px;min-width:11ch;visibility:hidden}
   .buy-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end}
   .price .currency{font-weight:800;font-size:1.1rem;line-height:1}
   .price .amount{font-weight:900;font-size:1.9rem;line-height:1}
   .cta{background:#22c55e;color:#052e16;border:0;border-radius:999px;padding:12px 16px;font-weight:900;cursor:pointer}
   .cta[disabled]{opacity:.6;cursor:not-allowed}
-
   .hotel.selected{outline:3px solid #0ea5e9;outline-offset:2px}
   .hotel.dim{opacity:.45;filter:saturate(.85)}
   .confirm-bar{position:sticky;top:0;z-index:80;background:#e0f2fe;color:#075985;padding:10px 16px;border-bottom:1px solid #bae6fd;font-weight:800}
-  @media (max-width:720px){
-    .hotel{grid-template-columns:1fr;gap:12px}
-    .img{height:200px}
-    .right{justify-items:start}
-    .buy-row{justify-content:flex-start}
-    .price .amount{font-size:1.6rem}
-  }
 </style>
 </head>
 <body>
@@ -74,15 +65,20 @@
   <div class="wrap"><div id="list"></div></div>
 
 <script>
-  // ===== 条件 B：目标卡=未来30天内超低价；干扰卡=无文案占位 =====
   const CONDITION = 'B';
   const CREDAMO_ANSWER_BASE = "https://www.credamo.com/answer.html#/s/3aqaimano";
   const SAME_PRICE = 'US$301';
   const REVIEW_COUNT = 324;
   const RATING = '4.5';
 
-  const HOTEL_TARGET = { id:'A', name:'Palm Tree Inn',   img:'hotel1.jpg', tags:['精品','复古','浪漫'], isFuture:true };
-  const HOTEL_FILLER = { id:'B', name:'Rotex Western Inn', img:'hotel2.jpg', tags:['安静','舒适','便捷'] };
+  const HOTELS = [
+    { id:'A', name:'棕榈景致酒店', img:'hotel1.jpg',
+      tags:['精品','复古','浪漫'],
+      amenityTags:['洗衣房','停车场','自助入住','智能客控'] },
+    { id:'B', name:'海风西岸酒店', img:'hotel2.jpg',
+      tags:['安静','舒适','便捷'],
+      amenityTags:['健身房','咖啡厅','24小时前台','行李寄存'] }
+  ];
 
   const qs = new URLSearchParams(location.search);
   let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
@@ -97,43 +93,33 @@
   function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
   function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
 
-  function genCode(){ const a=new Uint32Array(2); crypto.getRandomValues(a); const b=(BigInt(a[0])<<32n)|BigInt(a[1]); return 'H'+b.toString(36).slice(-12).toUpperCase(); }
+  const TARGET_INDEX = Math.floor(rnd()*2);
+  const HOTEL_TARGET = HOTELS[TARGET_INDEX];
+  const HOTEL_FILLER = HOTELS[1 - TARGET_INDEX];
 
+  function genCode(){ const a=new Uint32Array(2); crypto.getRandomValues(a); const b=(BigInt(a[0])<<32n)|BigInt(a[1]); return 'H'+b.toString(36).slice(-12).toUpperCase(); }
   function openCredamoWith(payload){
     const url = CREDAMO_ANSWER_BASE + '?' + new URLSearchParams(payload).toString();
     if (window.credamoEmbed && window.credamoEmbed.initSurvey) {
       window.credamoEmbed.initStyle();
-      window.credamoEmbed.initSurvey({
-        displayType: 1, rowType: 2, colType: 3, iconType: 1,
-        btnBg: '#3F85FA', btnText: '', isAnswerLimit: false, queryTable: [],
-        isInternational: false,
-        answerUrl: url,
-        onClose: function(){ console.log('credamo closed'); }
-      });
+      window.credamoEmbed.initSurvey({displayType:1,rowType:2,colType:3,iconType:1,btnBg:'#3F85FA',btnText:'',isAnswerLimit:false,queryTable:[],isInternational:false,answerUrl:url,onClose:()=>{}});
     } else { location.href = url; }
   }
-
   function showConfirmBar(hotelName){
     let bar = document.querySelector('.confirm-bar');
     if(!bar){ bar = document.createElement('div'); bar.className='confirm-bar'; document.body.prepend(bar); }
     bar.textContent = `您已选择：${hotelName}。后续问题仅关于这张卡片。`;
   }
-
   function labelByType(type){
     if(type==='PAST')   return '过去30天内超低价';
     if(type==='FUTURE') return '未来30天内超低价';
-    return '此房源超低价在售'; // BASE
+    return '此房源超低价在售';
   }
-
-  function makeCard(hotel, labelText){
+  function makeCard(hotel, labelText, labelType){
     const el=document.createElement('div'); el.className='hotel';
     const priceCurrency=(SAME_PRICE.match(/^[A-Z]*\$/)?.[0]||'US$');
     const priceAmount=(SAME_PRICE.match(/\d+(?:\.\d+)?/)?.[0]||'301');
-
-    const badgeHTML = labelText
-      ? `<span class="price-badge" aria-label="price-badge">${labelText}</span>`
-      : `<span class="badge-slot" aria-hidden="true"></span>`;
-
+    const badgeHTML = labelText ? `<span class="price-badge">${labelText}</span>` : `<span class="badge-slot" aria-hidden="true"></span>`;
     el.innerHTML=`
       <div class="imgwrap">
         <img class="img" src="${hotel.img}" alt="${hotel.name}">
@@ -145,8 +131,7 @@
         <span class="ranking">在洛杉矶的 1,051 处住宿中排行榜前十</span>
         <ul class="bullets"><li>关键词：${hotel.tags.join(' · ')}</li></ul>
         <div class="amenities">
-          <span class="amenity-chip">洗衣房</span><span class="amenity-chip">健身房</span>
-          <span class="amenity-chip">城市景观</span><span class="amenity-chip">智能客控</span>
+          ${hotel.amenityTags.map(t=>`<span class="amenity-chip">${t}</span>`).join('')}
         </div>
       </div>
       <div class="right">
@@ -157,54 +142,34 @@
         </div>
         <a class="meta" href="javascript:void(0)">查看优惠</a>
       </div>`;
-
-    const fav=el.querySelector('.fav');
-    fav.setAttribute('role','button'); fav.setAttribute('aria-pressed','false');
-    fav.addEventListener('click',()=>{ const on=fav.classList.toggle('active'); fav.setAttribute('aria-pressed',on?'true':'false'); });
-
     el.querySelector('.cta').addEventListener('click', ()=>{
       if(isLocked()){ alert('您已提交过选择，请返回问卷继续填写。'); return; }
-      onChoose(el, hotel, !!labelText, 'FUTURE');
+      onChoose(el, hotel, labelType);
     });
-
     return el;
   }
-
-  function onChoose(cardEl, hotel, hasBadge, labelType){
+  function onChoose(cardEl, hotel, labelType){
     document.querySelectorAll('.hotel').forEach(h=>{
       if(h===cardEl){ h.classList.add('selected'); }
       else{ h.classList.add('dim'); h.querySelector('.cta').disabled = true; }
     });
     showConfirmBar(hotel.name);
-
     const code=genCode();
-    const payload={subj,condition:CONDITION,hotelName:hotel.name,isFuture:(labelType==='FUTURE')?'TRUE':'FALSE',code,ts:new Date().toISOString()};
-    setLock(payload);
-
+    setLock({subj,condition:CONDITION,hotelName:hotel.name,isFuture:(labelType==='FUTURE')?'TRUE':'FALSE',code,ts:new Date().toISOString()});
     const badge=cardEl.querySelector('.price-badge');
     if(badge){ badge.textContent=`已记录您的选择。验证码：${code}`; badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7'; }
-
-    openCredamoWith({
-      condition: CONDITION,
-      hotel: hotel.name,
-      isFuture: (labelType==='FUTURE') ? 'TRUE' : 'FALSE',
-      code: code
-    });
+    openCredamoWith({ condition: CONDITION, hotel: hotel.name, isFuture: (labelType==='FUTURE')?'TRUE':'FALSE', code });
   }
-
   function render(){
     const list=document.getElementById('list'); list.innerHTML='';
-    const targetCard = makeCard(HOTEL_TARGET, labelByType('FUTURE'));
-    const fillerCard = makeCard(HOTEL_FILLER, '');
+    const targetCard = makeCard(HOTEL_TARGET, labelByType('FUTURE'), 'FUTURE');
+    const fillerCard = makeCard(HOTEL_FILLER, '', 'FILLER');
     shuffle([targetCard, fillerCard]).forEach(n=>list.appendChild(n));
-
     const lock=isLocked();
     if(lock){
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
-      document.querySelectorAll('.price-badge').forEach(b=>{
-        b.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`;
-        b.style.background='#0ea5e9'; b.style.borderColor='#0284c7';
-      });
+      const badge=document.querySelector('.price-badge');
+      if(badge){ badge.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`; badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7'; }
       showConfirmBar(lock.hotelName);
     }
   }
@@ -212,4 +177,3 @@
 </script>
 </body>
 </html>
-
