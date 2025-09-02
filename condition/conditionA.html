@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="robots" content="noindex,nofollow" />
-<title>Horizonte </title>
+<title>Horizonte</title>
 <script src="https://app.credamo.com/credamo/js/credamo_embed.min.js"></script>
 <style>
   :root{--card-gap:16px}
@@ -69,6 +69,7 @@
   <div class="wrap"><div id="list"></div></div>
 
 <script>
+  // ===== 页面常量 =====
   const CONDITION = 'A';
   const CREDAMO_ANSWER_BASE = "https://www.credamo.com/answer.html#/s/3yq6Brano";
   const CREDAMO_FALLBACK_BASE = "https://www.credamo.com/s/3yq6Brano";
@@ -76,47 +77,21 @@
   const REVIEW_COUNT = 324;
   const RATING = '4.5';
 
-  const HOTELS = [
-    { id:'A', name:'棕榈景致酒店', img:'hotel1.jpg', tags:['精品','复古','浪漫'], amenityTags:['洗衣房','停车场','自助入住','智能客控'] },
-    { id:'B', name:'海风西岸酒店', img:'hotel2.jpg', tags:['安静','舒适','便捷'], amenityTags:['健身房','咖啡厅','24小时前台','行李寄存'] }
-  ];
-
+  // ===== 工具 & 状态 =====
   const qs = new URLSearchParams(location.search);
-  let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
   const subj = qs.get('subj') || '';
   const TEST_MODE = !subj;
   const LOCK_KEY = subj ? `choice_lock_${subj}` : 'choice_lock_tmp';
-  if(qs.get('reset')==='1'){ localStorage.removeItem(`choice_lock_${subj}`); sessionStorage.removeItem('choice_lock_tmp'); }
+  if (qs.get('reset')==='1'){ localStorage.removeItem(`choice_lock_${subj}`); sessionStorage.removeItem('choice_lock_tmp'); }
   function isLocked(){ try{ return TEST_MODE ? JSON.parse(sessionStorage.getItem(LOCK_KEY)||'null') : JSON.parse(localStorage.getItem(LOCK_KEY)||'null'); }catch(e){ return null; } }
   function setLock(payload){ if(TEST_MODE) sessionStorage.setItem(LOCK_KEY, JSON.stringify(payload)); else localStorage.setItem(LOCK_KEY, JSON.stringify(payload)); }
 
-  let x = seed || 123456789;
-  function rnd(){ x^=x<<13; x^=x>>>17; x^=x<<5; return (x>>>0)/4294967295; }
-  function shuffle(arr){ for(let i=arr.length-1;i>0;i--){ const j=Math.floor(rnd()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; } return arr; }
-
-  const TARGET_INDEX = Math.floor(rnd()*2);
-  const HOTEL_TARGET = HOTELS[TARGET_INDEX];
-  const HOTEL_FILLER = HOTELS[1 - TARGET_INDEX];
-
-  function genCode(){ const a=new Uint32Array(2); crypto.getRandomValues(a); const b=(BigInt(a[0])<<32n)|BigInt(a[1]); return 'H'+b.toString(36).slice(-12).toUpperCase(); }
-
-  // 复制：优先同步方式，确保跳转前完成；失败再尝试异步 API
+  function genCode(){ const bytes=new Uint8Array(8); crypto.getRandomValues(bytes); let hex=''; for(const b of bytes){ hex+=('0'+b.toString(16)).slice(-2);} return 'H'+hex.slice(-12).toUpperCase(); }
   async function copyTextSafely(text){
     let ok=false;
-    try{
-      const ta=document.createElement('textarea');
-      ta.value=text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
-      document.body.appendChild(ta); ta.select();
-      ok=document.execCommand('copy');
-      document.body.removeChild(ta);
-    }catch(e){}
+    try{ const ta=document.createElement('textarea'); ta.value=text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select(); ok=document.execCommand('copy'); document.body.removeChild(ta);}catch(e){}
     if(ok) return true;
-    try{
-      if(navigator.clipboard && navigator.clipboard.writeText){
-        await navigator.clipboard.writeText(text);
-        return true;
-      }
-    }catch(e){}
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } }catch(e){}
     return false;
   }
 
@@ -133,7 +108,7 @@
   function showConfirmBar(hotelName){
     let bar = document.querySelector('.confirm-bar');
     if(!bar){ bar = document.createElement('div'); bar.className='confirm-bar'; document.body.prepend(bar); }
-    bar.textContent = `您已选择：${hotelName}。请记住您的选择与当前页面。`;
+    bar.textContent = `您已选择：${hotelName}。后续问题仅关于这张卡片。`;
   }
 
   function labelByType(type){
@@ -176,7 +151,33 @@
     return el;
   }
 
-  // 关键：等待复制完成再跳转
+  // ======== 随机装配：把图片/关键词/标签与酒店名字解耦并随机分配 ========
+  const HOTEL_SHELLS = [
+    { id:'A', name:'棕榈景致酒店' },
+    { id:'B', name:'海风西岸酒店' }
+  ];
+  const CONTENT_VARIANTS = [
+    { img:'hotel1.jpg', tags:['精品','复古','浪漫'], amenityTags:['洗衣房','停车场','自助入住','智能客控'] },
+    { img:'hotel2.jpg', tags:['安静','舒适','便捷'], amenityTags:['健身房','咖啡厅','24小时前台','行李寄存'] }
+  ];
+  const armParam   = qs.get('arm');   // 0/1 -> 徽章归属
+  const orderParam = qs.get('order'); // 0/1 -> 上下顺序
+  const swapParam  = qs.get('swap');  // 0/1 -> 内容变体交换
+
+  function hashStr(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619);} return h>>>0; }
+  const seedBase = subj ? hashStr(subj) : (Date.now()>>>0);
+
+  const SWAP_CONTENT = (swapParam==='0'||swapParam==='1') ? Number(swapParam) : ((seedBase>>>2)&1);
+  const ARM          = (armParam==='0'||armParam==='1')   ? Number(armParam)  : (seedBase & 1);
+  const ORDER_FLIP   = (orderParam==='0'||orderParam==='1')?Number(orderParam): ((seedBase>>>1)&1);
+
+  const HOTELS = [
+    { ...HOTEL_SHELLS[0], ...CONTENT_VARIANTS[ SWAP_CONTENT ? 1 : 0 ] },
+    { ...HOTEL_SHELLS[1], ...CONTENT_VARIANTS[ SWAP_CONTENT ? 0 : 1 ] }
+  ];
+  const HOTEL_TARGET = HOTELS[ARM];
+  const HOTEL_FILLER = HOTELS[1-ARM];
+
   async function onChoose(cardEl, hotel, labelType){
     document.querySelectorAll('.hotel').forEach(h=>{
       if(h===cardEl){ h.classList.add('selected'); }
@@ -185,16 +186,14 @@
     showConfirmBar(hotel.name);
 
     const code=genCode();
-    setLock({subj,condition:CONDITION,hotelName:hotel.name,isFuture:(labelType==='FUTURE')?'TRUE':'FALSE',code,ts:new Date().toISOString()});
+    setLock({subj,condition:CONDITION,hotelName:hotel.name,isFuture:(labelType==='FUTURE')?'TRUE':'FALSE',code,arm:ARM,orderFlip:ORDER_FLIP,swap:SWAP_CONTENT,ts:new Date().toISOString()});
 
     const badge=cardEl.querySelector('.price-badge');
-    const copiedHint = '（已复制）';
+    const copiedHint='（已复制）';
     if(badge){
       badge.textContent=`已记录您的选择。验证码：${code}`;
-      badge.style.background='#0ea5e9';
-      badge.style.borderColor='#0284c7';
-      badge.style.cursor='pointer';
-      badge.title='点击可再次复制验证码';
+      badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
+      badge.style.cursor='pointer'; badge.title='点击可再次复制验证码';
       const ok = await copyTextSafely(code);
       if(ok) badge.textContent=`已记录您的选择。验证码：${code}${copiedHint}`;
       badge.addEventListener('click', ()=>{ copyTextSafely(code); });
@@ -202,27 +201,35 @@
       await copyTextSafely(code);
     }
 
-    // 稍作延迟保证剪贴板落稳
-    setTimeout(()=>openCredamoWith({ condition: CONDITION, hotel: hotel.name, isFuture: (labelType==='FUTURE')?'TRUE':'FALSE', code }), 80);
+    setTimeout(()=>openCredamoWith({
+      condition: CONDITION,
+      hotel: hotel.name,
+      isFuture: (labelType==='FUTURE')?'TRUE':'FALSE',
+      code, arm: ARM, orderFlip: ORDER_FLIP, swap: SWAP_CONTENT, subj
+    }), 60);
   }
 
   function render(){
     const list=document.getElementById('list'); list.innerHTML='';
     const targetCard = makeCard(HOTEL_TARGET, labelByType('PAST'), 'PAST');
     const fillerCard = makeCard(HOTEL_FILLER, '', 'FILLER');
-    shuffle([targetCard, fillerCard]).forEach(n=>list.appendChild(n));
+    const cards=[targetCard,fillerCard];
+    if(ORDER_FLIP) cards.reverse();
+    cards.forEach(n=>list.appendChild(n));
 
     const lock=isLocked();
     if(lock){
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
       const badge=document.querySelector('.price-badge');
-      if(badge){
-        badge.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`;
-        badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
-        badge.style.cursor='pointer'; badge.title='点击可复制验证码';
-        badge.addEventListener('click',()=>copyTextSafely(lock.code));
-      }
+      if(badge){ badge.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`; badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7'; badge.style.cursor='pointer'; badge.title='点击可复制验证码'; badge.addEventListener('click',()=>copyTextSafely(lock.code)); }
       showConfirmBar(lock.hotelName);
+    }
+
+    if(qs.get('debug')==='1'){
+      const tag=document.createElement('div');
+      tag.style.cssText='position:fixed;left:10px;bottom:10px;z-index:9999;background:#111;color:#fff;padding:6px 8px;font:12px/1 monospace;border-radius:6px;opacity:.85';
+      tag.textContent=`swap=${SWAP_CONTENT} arm=${ARM} order=${ORDER_FLIP} subj=${subj||'-'}`;
+      document.body.appendChild(tag);
     }
   }
   render();
