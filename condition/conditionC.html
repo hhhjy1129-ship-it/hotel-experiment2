@@ -93,6 +93,20 @@
 
   function genCode(){ const a=new Uint32Array(2); crypto.getRandomValues(a); const b=(BigInt(a[0])<<32n)|BigInt(a[1]); return 'H'+b.toString(36).slice(-12).toUpperCase(); }
 
+  async function copyTextSafely(text){
+    let ok=false;
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      ok=document.execCommand('copy');
+      document.body.removeChild(ta);
+    }catch(e){}
+    if(ok) return true;
+    try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } }catch(e){}
+    return false;
+  }
+
   function openCredamoWith(payload){
     const params = new URLSearchParams(payload).toString();
     const url = `${CREDAMO_ANSWER_BASE}?${params}`;
@@ -120,7 +134,6 @@
     const priceCurrency=(SAME_PRICE.match(/^[A-Z]*\$/)?.[0]||'US$');
     const priceAmount=(SAME_PRICE.match(/\d+(?:\.\d+)?/)?.[0]||'301');
     const badgeHTML = labelText ? `<span class="price-badge">${labelText}</span>` : `<span class="badge-slot" aria-hidden="true"></span>`;
-
     el.innerHTML=`
       <div class="imgwrap">
         <img class="img" src="${hotel.img}" alt="${hotel.name}">
@@ -143,65 +156,54 @@
         </div>
         <a class="meta" href="javascript:void(0)">查看优惠</a>
       </div>`;
-
     el.querySelector('.cta').addEventListener('click', ()=>{
       if(isLocked()){ alert('您已提交过选择，请返回问卷继续填写。'); return; }
       onChoose(el, hotel, labelType);
     });
     return el;
   }
-  
-<script>
-function onChoose(cardEl, hotel, labelType){
-  // UI 选中/置灰
-  document.querySelectorAll('.hotel').forEach(h=>{
-    if(h===cardEl){ h.classList.add('selected'); }
-    else{ h.classList.add('dim'); h.querySelector('.cta').disabled = true; }
-  });
-  showConfirmBar(hotel.name);
 
-  // 生成与落盘
-  const code=genCode();
-  setLock({subj,condition:CONDITION,hotelName:hotel.name,isFuture:(labelType==='FUTURE')?'TRUE':'FALSE',code,ts:new Date().toISOString()});
-
-  // 更新徽章 & 自动复制
-  const badge=cardEl.querySelector('.price-badge');
-  const copiedHint = '（已复制）';
-  if(badge){
-    badge.textContent=`已记录您的选择。验证码：${code}`;
-    badge.style.background='#0ea5e9';
-    badge.style.borderColor='#0284c7';
-    badge.style.cursor='pointer';
-    badge.title='点击可再次复制验证码';
-
-    // 先自动复制，再在成功时追加“已复制”提示
-    copyTextSafely(code).then(ok=>{
-      if(ok) badge.textContent=`已记录您的选择。验证码：${code}${copiedHint}`;
+  async function onChoose(cardEl, hotel, labelType){
+    document.querySelectorAll('.hotel').forEach(h=>{
+      if(h===cardEl){ h.classList.add('selected'); }
+      else{ h.classList.add('dim'); h.querySelector('.cta').disabled = true; }
     });
+    showConfirmBar(hotel.name);
 
-    // 允许点击徽章再次复制
-    badge.addEventListener('click', ()=>{ copyTextSafely(code); });
-  }else{
-    // 即使没有徽章（干扰卡），也会自动复制
-    copyTextSafely(code);
+    const code=genCode();
+    setLock({subj,condition:CONDITION,hotelName:hotel.name,isFuture:(labelType==='FUTURE')?'TRUE':'FALSE',code,ts:new Date().toISOString()});
+
+    const badge=cardEl.querySelector('.price-badge');
+    const copiedHint='（已复制）';
+    if(badge){
+      badge.textContent=`已记录您的选择。验证码：${code}`;
+      badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
+      badge.style.cursor='pointer'; badge.title='点击可再次复制验证码';
+      const ok = await copyTextSafely(code);
+      if(ok) badge.textContent=`已记录您的选择。验证码：${code}${copiedHint}`;
+      badge.addEventListener('click', ()=>{ copyTextSafely(code); });
+    }else{
+      await copyTextSafely(code);
+    }
+
+    setTimeout(()=>openCredamoWith({ condition: CONDITION, hotel: hotel.name, isFuture: (labelType==='FUTURE')?'TRUE':'FALSE', code }), 80);
   }
-
-  // 打开问卷（保持不变）
-  openCredamoWith({ condition: CONDITION, hotel: hotel.name, isFuture: (labelType==='FUTURE')?'TRUE':'FALSE', code });
-}
-</script>
 
   function render(){
     const list=document.getElementById('list'); list.innerHTML='';
     const targetCard = makeCard(HOTEL_TARGET, labelByType('BASE'), 'BASE');
     const fillerCard = makeCard(HOTEL_FILLER, '', 'FILLER');
     shuffle([targetCard, fillerCard]).forEach(n=>list.appendChild(n));
-
     const lock=isLocked();
     if(lock){
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
       const badge=document.querySelector('.price-badge');
-      if(badge){ badge.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`; badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7'; }
+      if(badge){
+        badge.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`;
+        badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
+        badge.style.cursor='pointer'; badge.title='点击可复制验证码';
+        badge.addEventListener('click',()=>copyTextSafely(lock.code));
+      }
       showConfirmBar(lock.hotelName);
     }
   }
