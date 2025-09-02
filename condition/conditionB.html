@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="robots" content="noindex,nofollow" />
-<title>Horizonte </title>
+<title>Horizonte</title>
 <script src="https://app.credamo.com/credamo/js/credamo_embed.min.js"></script>
 <style>
   :root{--card-gap:16px}
@@ -44,6 +44,13 @@
   .hotel.selected{outline:3px solid #0ea5e9;outline-offset:2px}
   .hotel.dim{opacity:.45;filter:saturate(.85)}
   .confirm-bar{position:sticky;top:0;z-index:80;background:#e0f2fe;color:#075985;padding:10px 16px;border-bottom:1px solid #bae6fd;font-weight:800}
+  @media (max-width:720px){
+    .hotel{grid-template-columns:1fr;gap:12px}
+    .img{height:200px}
+    .right{justify-items:start}
+    .buy-row{justify-content:flex-start}
+    .price .amount{font-size:1.6rem}
+  }
 </style>
 </head>
 <body>
@@ -70,10 +77,15 @@
   const RATING = '4.5';
 
   const HOTELS = [
-    { id:'A', name:'棕榈景致酒店', img:'hotel1.jpg', tags:['精品','复古','浪漫'], amenityTags:['洗衣房','停车场','自助入住','智能客控'] },
-    { id:'B', name:'海风西岸酒店', img:'hotel2.jpg', tags:['安静','舒适','便捷'], amenityTags:['健身房','咖啡厅','24小时前台','行李寄存'] }
+    { id:'A', name:'棕榈景致酒店', img:'hotel1.jpg',
+      tags:['精品','复古','浪漫'],
+      amenityTags:['洗衣房','停车场','自助入住','智能客控'] },
+    { id:'B', name:'海风西岸酒店', img:'hotel2.jpg',
+      tags:['安静','舒适','便捷'],
+      amenityTags:['健身房','咖啡厅','24小时前台','行李寄存'] }
   ];
 
+  // ==== 随机/状态 ====
   const qs = new URLSearchParams(location.search);
   let seed = parseInt(qs.get('seed')||Date.now().toString().slice(-6),10);
   const subj = qs.get('subj') || '';
@@ -91,7 +103,14 @@
   const HOTEL_TARGET = HOTELS[TARGET_INDEX];
   const HOTEL_FILLER = HOTELS[1 - TARGET_INDEX];
 
-  function genCode(){ const a=new Uint32Array(2); crypto.getRandomValues(a); const b=(BigInt(a[0])<<32n)|BigInt(a[1]); return 'H'+b.toString(36).slice(-12).toUpperCase(); }
+  // ✅ 兼容写法：不使用 BigInt
+  function genCode(){
+    const bytes = new Uint8Array(8);
+    crypto.getRandomValues(bytes);
+    let hex = '';
+    for (const b of bytes) hex += ('0' + b.toString(16)).slice(-2);
+    return 'H' + hex.slice(-12).toUpperCase();
+  }
 
   async function copyTextSafely(text){
     let ok=false;
@@ -113,7 +132,10 @@
     const fallback = `${CREDAMO_FALLBACK_BASE}?${params}`;
     if (window.credamoEmbed && window.credamoEmbed.initSurvey) {
       window.credamoEmbed.initStyle();
-      window.credamoEmbed.initSurvey({displayType:1,rowType:2,colType:3,iconType:1,btnBg:'#3F85FA',btnText:'',isAnswerLimit:false,queryTable:[],isInternational:false,answerUrl:url,onClose:()=>{}});
+      window.credamoEmbed.initSurvey({
+        displayType:1,rowType:2,colType:3,iconType:1,btnBg:'#3F85FA',btnText:'',
+        isAnswerLimit:false,queryTable:[],isInternational:false,answerUrl:url,onClose:()=>{}
+      });
     } else { location.href = fallback; }
   }
 
@@ -185,7 +207,6 @@
     }else{
       await copyTextSafely(code);
     }
-
     setTimeout(()=>openCredamoWith({ condition: CONDITION, hotel: hotel.name, isFuture: (labelType==='FUTURE')?'TRUE':'FALSE', code }), 80);
   }
 
@@ -194,9 +215,22 @@
     const targetCard = makeCard(HOTEL_TARGET, labelByType('FUTURE'), 'FUTURE');
     const fillerCard = makeCard(HOTEL_FILLER, '', 'FILLER');
     shuffle([targetCard, fillerCard]).forEach(n=>list.appendChild(n));
+
     const lock=isLocked();
     if(lock){
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
       const badge=document.querySelector('.price-badge');
       if(badge){
-        badge.textContent=`已记
+        badge.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`;
+        badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
+        badge.style.cursor='pointer'; badge.title='点击可复制验证码';
+        badge.addEventListener('click',()=>copyTextSafely(lock.code));
+      }
+      showConfirmBar(lock.hotelName);
+    }
+  }
+  render();
+</script>
+</body>
+</html>
+
