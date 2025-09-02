@@ -94,9 +94,17 @@
   function genCode(){ const a=new Uint32Array(2); crypto.getRandomValues(a); const b=(BigInt(a[0])<<32n)|BigInt(a[1]); return 'H'+b.toString(36).slice(-12).toUpperCase(); }
 
   async function copyTextSafely(text){
+    let ok=false;
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select();
+      ok=document.execCommand('copy');
+      document.body.removeChild(ta);
+    }catch(e){}
+    if(ok) return true;
     try{ if(navigator.clipboard && navigator.clipboard.writeText){ await navigator.clipboard.writeText(text); return true; } }catch(e){}
-    const ta=document.createElement('textarea'); ta.value=text; ta.setAttribute('readonly',''); ta.style.position='fixed'; ta.style.opacity='0';
-    document.body.appendChild(ta); ta.select(); let ok=false; try{ ok=document.execCommand('copy'); }catch(e){} document.body.removeChild(ta); return ok;
+    return false;
   }
 
   function openCredamoWith(payload){
@@ -155,7 +163,7 @@
     return el;
   }
 
-  function onChoose(cardEl, hotel, labelType){
+  async function onChoose(cardEl, hotel, labelType){
     document.querySelectorAll('.hotel').forEach(h=>{
       if(h===cardEl){ h.classList.add('selected'); }
       else{ h.classList.add('dim'); h.querySelector('.cta').disabled = true; }
@@ -171,11 +179,14 @@
       badge.textContent=`已记录您的选择。验证码：${code}`;
       badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
       badge.style.cursor='pointer'; badge.title='点击可再次复制验证码';
-      copyTextSafely(code).then(ok=>{ if(ok) badge.textContent=`已记录您的选择。验证码：${code}${copiedHint}`; });
+      const ok = await copyTextSafely(code);
+      if(ok) badge.textContent=`已记录您的选择。验证码：${code}${copiedHint}`;
       badge.addEventListener('click', ()=>{ copyTextSafely(code); });
-    }else{ copyTextSafely(code); }
+    }else{
+      await copyTextSafely(code);
+    }
 
-    openCredamoWith({ condition: CONDITION, hotel: hotel.name, isFuture: (labelType==='FUTURE')?'TRUE':'FALSE', code });
+    setTimeout(()=>openCredamoWith({ condition: CONDITION, hotel: hotel.name, isFuture: (labelType==='FUTURE')?'TRUE':'FALSE', code }), 80);
   }
 
   function render(){
@@ -187,12 +198,5 @@
     if(lock){
       document.querySelectorAll('.cta').forEach(btn=>btn.disabled=true);
       const badge=document.querySelector('.price-badge');
-      if(badge){ badge.textContent=`已记录：${lock.hotelName}。验证码：${lock.code}`; badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7'; }
-      showConfirmBar(lock.hotelName);
-    }
-  }
-  render();
-</script>
-</body>
-</html>
-
+      if(badge){
+        badge.textContent=`已记
