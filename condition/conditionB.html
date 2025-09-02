@@ -142,7 +142,7 @@
   function showConfirmBar(hotelName){
     let bar = document.querySelector('.confirm-bar');
     if(!bar){ bar = document.createElement('div'); bar.className='confirm-bar'; document.body.prepend(bar); }
-    bar.textContent = `您已选择：${hotelName}。后续问题仅关于这张卡片。`;
+    bar.textContent = `您已选择：${hotelName}。请记住您的选择与当前页面。`;
   }
 
   function labelByType(type){
