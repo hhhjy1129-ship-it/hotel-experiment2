@@ -128,16 +128,16 @@
     const badgeHTML = labelText ? `<span class="price-badge" aria-label="price-badge">${labelText}</span>` : `<span class="badge-slot" aria-hidden="true"></span>`;
     el.innerHTML=`
       <div class="imgwrap">
-        <img class="img" src="\${hotel.img}" alt="\${hotel.name}">
+        <img class="img" src="${hotel.img}" alt="${hotel.name}">
         <div class="fav" title="收藏"></div>
       </div>
       <div class="mid">
-        <h3 class="title">\${hotel.name}</h3>
+        <h3 class="title">${hotel.name}</h3>
         <div class="score"><span>${RATING}</span><span class="dots">●●●●●◐</span><span class="meta">（${REVIEW_COUNT.toLocaleString()} 条点评）</span></div>
         <span class="ranking">在洛杉矶的 1,051 处住宿中排行榜前十</span>
-        <ul class="bullets"><li>关键词：\${hotel.tags.join(' · ')}</li></ul>
+        <ul class="bullets"><li>关键词：${hotel.tags.join(' · ')}</li></ul>
         <div class="amenities">
-          \${hotel.amenityTags.map(t=>`<span class="amenity-chip">\${t}</span>`).join('')}
+          ${hotel.amenityTags.map(t=>`<span class="amenity-chip">${t}</span>`).join('')}
         </div>
       </div>
       <div class="right">
@@ -155,7 +155,7 @@
     return el;
   }
 
-  // ======== 随机装配：把图片/关键词/标签与酒店名字解耦并随机分配 ========
+  // ======== 随机装配 ========
   const HOTEL_SHELLS = [
     { id:'A', name:'棕榈景致酒店' },
     { id:'B', name:'海风西岸酒店' }
@@ -195,7 +195,7 @@
     // 是否带“框架标签”
     const selectedHasBadge = cardEl.querySelector('.price-badge') ? 'TRUE' : 'FALSE';
 
-    // 本地锁定（✅ 用 CONSTANT）
+    // 本地锁定
     setLock({
       subj,
       condition: CONDITION,
@@ -220,7 +220,7 @@
       await copyTextSafely(code);
     }
 
-    // 跳转 Credamo（✅ 用 CONSTANT）
+    // 跳转 Credamo
     setTimeout(()=>openCredamoWith({
       condition: CONDITION,
       hotel: hotel.name,
