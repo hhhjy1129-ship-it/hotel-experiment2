@@ -189,7 +189,7 @@
   // 保留你原有的本地锁字段（随意）
   setLock({
     subj,
-    condition,              // 如果你原来用的是 condition: 'A'/'B'/'C' 就保留原样
+    CONDITION,              // 如果你原来用的是 condition: 'A'/'B'/'C' 就保留原样
     hotelName: hotel.name,
     isFuture: (labelType==='FUTURE') ? 'TRUE' : 'FALSE',  // 兼容你已有列
     selected_has_badge: selectedHasBadge,                 // ✅ 新增本地记录，方便自检
@@ -213,7 +213,7 @@
 
   // ✅ 关键：把是否带框架传给 Credamo
   setTimeout(()=>openCredamoWith({
-    condition,                  // 你已有列
+    CONDITION,                  // 你已有列
     hotel: hotel.name,          // 你已有列
     isFuture: (labelType==='FUTURE') ? 'TRUE' : 'FALSE',  // 你已有列
     selected_has_badge: selectedHasBadge,                 // ✅ 新增：就靠这个判断
