@@ -178,36 +178,54 @@
   const HOTEL_TARGET = HOTELS[ARM];
   const HOTEL_FILLER = HOTELS[1-ARM];
 
-  async function onChoose(cardEl, hotel, labelType){
-    document.querySelectorAll('.hotel').forEach(h=>{
-      if(h===cardEl){ h.classList.add('selected'); }
-      else{ h.classList.add('dim'); h.querySelector('.cta').disabled = true; }
-    });
-    showConfirmBar(hotel.name);
+ async function onChoose(cardEl, hotel, labelType){
+  // 选中/置灰 UI（保持你原来的写法）
+  document.querySelectorAll('.hotel').forEach(h=>{
+    if(h===cardEl){ h.classList.add('selected'); }
+    else{ h.classList.add('dim'); h.querySelector('.cta').disabled = true; }
+  });
+  showConfirmBar(hotel.name);
 
-    const code=genCode();
-    setLock({subj,condition:CONDITION,hotelName:hotel.name,isFuture:(labelType==='FUTURE')?'TRUE':'FALSE',code,arm:ARM,orderFlip:ORDER_FLIP,swap:SWAP_CONTENT,ts:new Date().toISOString()});
+  const code = genCode();
 
-    const badge=cardEl.querySelector('.price-badge');
-    const copiedHint='（已复制）';
-    if(badge){
-      badge.textContent=`已记录您的选择。验证码：${code}`;
-      badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
-      badge.style.cursor='pointer'; badge.title='点击可再次复制验证码';
-      const ok = await copyTextSafely(code);
-      if(ok) badge.textContent=`已记录您的选择。验证码：${code}${copiedHint}`;
-      badge.addEventListener('click', ()=>{ copyTextSafely(code); });
-    }else{
-      await copyTextSafely(code);
-    }
+  // ✅ 关键：是否带“框架标签”
+  // 有徽章元素 .price-badge 就算带框架；没有就不带（你无标签时是 .badge-slot）
+  const selectedHasBadge = cardEl.querySelector('.price-badge') ? 'TRUE' : 'FALSE';
 
-    setTimeout(()=>openCredamoWith({
-      condition: CONDITION,
-      hotel: hotel.name,
-      isFuture: (labelType==='FUTURE')?'TRUE':'FALSE',
-      code, arm: ARM, orderFlip: ORDER_FLIP, swap: SWAP_CONTENT, subj
-    }), 60);
+  // 保留你原有的本地锁字段（随意）
+  setLock({
+    subj,
+    condition,              // 如果你原来用的是 condition: 'A'/'B'/'C' 就保留原样
+    hotelName: hotel.name,
+    isFuture: (labelType==='FUTURE') ? 'TRUE' : 'FALSE',  // 兼容你已有列
+    selected_has_badge: selectedHasBadge,                 // ✅ 新增本地记录，方便自检
+    code, arm: ARM, orderFlip: ORDER_FLIP, swap: SWAP_CONTENT,
+    ts: new Date().toISOString()
+  });
+
+  // 徽章提示 & 复制验证码（保持你原逻辑）
+  const badge=cardEl.querySelector('.price-badge');
+  const copiedHint='（已复制）';
+  if(badge){
+    badge.textContent=`已记录您的选择。验证码：${code}`;
+    badge.style.background='#0ea5e9'; badge.style.borderColor='#0284c7';
+    badge.style.cursor='pointer'; badge.title='点击可再次复制验证码';
+    const ok = await copyTextSafely(code);
+    if(ok) badge.textContent=`已记录您的选择。验证码：${code}${copiedHint}`;
+    badge.addEventListener('click', ()=>{ copyTextSafely(code); });
+  }else{
+    await copyTextSafely(code);
   }
+
+  // ✅ 关键：把是否带框架传给 Credamo
+  setTimeout(()=>openCredamoWith({
+    condition,                  // 你已有列
+    hotel: hotel.name,          // 你已有列
+    isFuture: (labelType==='FUTURE') ? 'TRUE' : 'FALSE',  // 你已有列
+    selected_has_badge: selectedHasBadge,                 // ✅ 新增：就靠这个判断
+    code, arm: ARM, orderFlip: ORDER_FLIP, swap: SWAP_CONTENT, subj
+  }), 60);
+}
 
   function render(){
     const list=document.getElementById('list'); list.innerHTML='';
